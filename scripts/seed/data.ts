@@ -10,7 +10,7 @@ import { initializeUserSchema, userIdSchema } from "../../src/modules/users/sche
 import { settingsSchema } from "../../src/modules/settings/schema";
 import { demoSettings } from "./settings";
 import { demoEmailTemplates } from "./templates";
-import { placeholderPhotos } from "./photos";
+import { vehiclePhotos } from "./photos";
 
 const id = () => randomBytes(12).toString("hex");
 const day = 86_400_000;
@@ -81,7 +81,7 @@ export function buildDemoData(passwordHashes: Record<string, string>, now = new 
       // Deliberately synthetic VINs, valid format only; never represented as actual stock VINs.
       vin: `1DEM000A${String(i + 1).padStart(9, "0")}`,
       year, make, model, trim, mileage, price, status, dealershipId: dealerships[Math.floor(i / 9)].id,
-      photos: placeholderPhotos({ year, make, model }), dateInStock: ago(14 + i * 3),
+      photos: vehiclePhotos({ year, make, model }), dateInStock: ago(14 + i * 3),
       priceHistory: i % 4 === 0 ? [{ previousPrice: price + 1500, price, changedAt: ago(2), changedBy: users[0].id }] : [],
       statusHistory: status === "available" ? [] : [{ previousStatus: "available", status, changedAt: ago(1), changedBy: users[0].id }],
     };
