@@ -1,0 +1,15 @@
+export const publicInventoryCopy = {
+  title: "Find your next vehicle", intro: "Explore our available vehicles and connect with your local dealership.",
+  inventory: "Browse inventory", staff: "Staff sign in", skip: "Skip to vehicles", available: "Available vehicles",
+  dealership: "Dealership", all: "All dealerships", filter: "Apply filter", clear: "Clear filter",
+  empty: "No available vehicles", emptyHint: "Try another dealership or check back for new arrivals.",
+  invalid: "That filter is invalid. Please choose a dealership below.",
+  view: "View vehicle", back: "Back to inventory", specs: "Vehicle details", photos: "Vehicle photos",
+  price: "Price (CAD)", mileage: "Mileage", stock: "Stock number", vin: "VIN", trim: "Trim",
+  location: "Visit the dealership", loading: "Loading vehicles…", error: "We couldn’t load our inventory. Please try again.", retry: "Try again",
+  missing: "Vehicle unavailable", missingHint: "This vehicle may no longer be available. Browse our current inventory to find another vehicle.",
+  previous: "Previous", next: "Next",
+  results: (count: number) => `${count} available vehicle${count === 1 ? "" : "s"}`,
+  page: (page: number, total: number) => `Page ${page} of ${total}`,
+  photo: (title: string, index: number) => `${title} — photo ${index + 1}`,
+} as const;
