@@ -23,8 +23,8 @@ function askHidden(question: string): Promise<string> {
 async function main() {
   loadEnvConfig(process.cwd());
   const email = emailSchema.parse(process.argv[2]);
-  const password = await askHidden(`New password for ${email} (12-72 characters): `);
-  if (!passwordSchema.safeParse(password).success) throw new Error("Password must be 12-72 characters.");
+  const password = await askHidden(`New password for ${email} (8-72 characters): `);
+  if (!passwordSchema.safeParse(password).success) throw new Error("Password must be 8-72 characters.");
   if (password !== await askHidden("Repeat new password: ")) throw new Error("Passwords do not match.");
   try {
     await connectDb();
