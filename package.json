@@ -19,6 +19,7 @@
     "inventory:check": "node scripts/check-inventory.mjs",
     "public:check": "node scripts/check-public.mjs",
     "seed:automation": "node --conditions=react-server --import tsx scripts/seed-automation.ts",
+    "seed:photos": "node --conditions=react-server --import tsx scripts/seed-photos.ts",
     "automation:check": "node --conditions=react-server --import tsx scripts/check-automation.ts",
     "booking:check": "node --conditions=react-server --import tsx scripts/check-booking.ts"
   },

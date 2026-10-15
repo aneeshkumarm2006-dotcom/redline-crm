@@ -249,8 +249,10 @@ components. The root layout mounts Sonner's toaster. Add components with
 Customers can browse `/inventory`, filter by dealership, and open
 `/inventory/[id]` without signing in. Vehicle pages show supplied photos (with
 an empty/broken-image fallback), CAD price, km mileage, specifications and
-location contact details. The demo seed has no vehicle photos; add actual photo
-URLs using the owner's vehicle editor.
+location contact details. The demo seed gives each vehicle three placehold.co
+placeholder photos; replace them with actual photo URLs using the owner's vehicle
+editor. `npm run seed:photos` adds the placeholders to vehicles that have no
+photos without resetting any data.
 
 Public visibility is controlled by `Settings.publicInventoryStatusKeys`, with
 `["available"]` as the backward-compatible default for existing databases.
