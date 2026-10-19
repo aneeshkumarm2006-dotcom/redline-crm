@@ -113,6 +113,15 @@ export const automationsCopy = {
   outcomes: { success: "Done", failed: "Failed", skipped: "Skipped" },
   breakdown: (success: number, skipped: number, failed: number) => [`${success} done`, skipped ? `${skipped} skipped` : "", failed ? `${failed} failed` : ""].filter(Boolean).join(" · "),
   history: "History", historyFor: (name: string) => `Recent runs: ${name}`,
+  delivery: {
+    title: "Email delivery",
+    smtp: (from: string, host: string) => `Sending through ${host} as ${from}, with your company name as the sender name.`,
+    resend: "Sending through Resend.", console: "Test mode: emails are written to the Email log only, not delivered.",
+    replyTo: (address: string) => `Replies go to ${address}.`,
+    ready: "Ready — customers receive emails.", notLive: "Not delivering to inboxes (test mode).",
+    testLabel: "Send a test email to", send: "Send test", sending: "Sending…",
+    sent: (to: string) => `Sent. Check ${to} (and the spam folder).`, logged: "Written to the Email log (test mode, not delivered).",
+  },
   runNow: "Run now", running: "Running…", runNowHint: "Checks aging stock, overdue repairs, uncontacted leads, appointments and customer follow-ups now. Nothing is ever sent twice.",
   ranSummary: (summary: ScheduledRunSummary) => {
     const fired = summary.recipes.reduce((sum, entry) => sum + entry.fired, 0);

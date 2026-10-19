@@ -6,7 +6,7 @@ import { keySchema, objectIdSchema } from "@/lib/data-schema";
 import { requireRole } from "@/modules/auth/service";
 import { brandEmail } from "@/lib/email/layout";
 import { getSettings } from "@/modules/settings/service";
-import { ConsoleProvider, SmtpProvider, getEmailProvider, isLoggedProvider, sendAndLog, type EmailMessage, type EmailProvider, type EmailRefs } from "@/lib/email/provider";
+import { ConsoleProvider, EmailSetupError, SmtpProvider, getEmailProvider, senderAddress, isLoggedProvider, sendAndLog, type EmailMessage, type EmailProvider, type EmailRefs } from "@/lib/email/provider";
 import { AutomationRunModel, EmailLogModel } from "./model";
 import { automationRunInputSchema, automationRunSchema, emailLogFilterSchema, emailLogInputSchema, emailLogSchema, type AutomationRecipeKey, type AutomationRun, type EmailLogEntry } from "./schema";
 
@@ -201,4 +201,19 @@ export async function replaceEmailLogForSeed(input: unknown) {
   await EmailLogModel.deleteMany({}).exec();
   if (documents.length) await EmailLogModel.insertMany(documents);
   return documents.length;
+}
+
+/** Owner check: sends one branded test email through the live provider and says why if it cannot. */
+export async function sendTestEmail(to: unknown): Promise<{ ok: true } | { ok: false; message: string }> {
+  await requireRole("owner");
+  const address = z.string().trim().email().safeParse(to);
+  if (!address.success) return { ok: false, message: "Enter a valid email address." };
+  const { brand, emailFrom } = await getSettings();
+  try {
+    await sendLoggedEmail({ from: senderAddress(emailFrom), to: [address.data], subject: `Test email from ${brand.companyName}`,
+      html: `<p>Hi,</p><p>This is a test from <strong>${brand.companyName.replace(/[<>&]/g, "")}</strong>'s CRM. If you can read this, customer emails, follow-ups and reminders will reach inboxes.</p><p>— ${brand.companyName.replace(/[<>&]/g, "")}</p>` });
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, message: error instanceof EmailSetupError ? error.message : "Email delivery failed." };
+  }
 }

@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { setAutomationEnabled } from "@/modules/settings/service";
 import { runScheduledAutomationsNow } from "./reminders";
+import { sendTestEmail } from "./service";
 import type { ScheduledRunSummary } from "./schema";
 
 /** Owner recipe switch. Revalidation failure does not undo a saved toggle. */
@@ -19,4 +20,10 @@ export async function runScheduledNowAction(): Promise<{ ok: true; summary: Sche
   catch { return { ok: false }; }
   try { revalidatePath("/crm", "layout"); } catch { console.error("Reminders ran; revalidation failed."); }
   return { ok: true, summary };
+}
+
+/** Owner: sends a test email so delivery can be checked from the Automations page. */
+export async function sendTestEmailAction(to: unknown) {
+  try { return await sendTestEmail(to); }
+  catch { return { ok: false as const, message: "Only the owner can send a test email." }; }
 }

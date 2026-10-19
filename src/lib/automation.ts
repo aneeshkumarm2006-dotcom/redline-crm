@@ -1,3 +1,4 @@
+import { EmailSetupError } from "@/lib/email/provider";
 import "server-only";
 import { on, type AppEvent, type EventName } from "@/lib/events";
 import { eventNames, type DomainEvent } from "@/lib/event-contract";
@@ -38,7 +39,10 @@ export function onRecipe<K extends EventName>(name: K, recipeKey: AutomationReci
     let result: RecipeOutcome;
     try { result = await handler(event); }
     catch (error) {
-      await record(failed(runDetails.failed(error instanceof AggregateError ? error.errors.length : 1)));
+      // Email setup problems carry a safe explanation (which setting is wrong); show it with the failure.
+      const errors = error instanceof AggregateError ? error.errors : [error];
+      const reason = errors.find((entry): entry is EmailSetupError => entry instanceof EmailSetupError)?.message;
+      await record(failed([runDetails.failed(errors.length), reason].filter(Boolean).join(" ")));
       throw error;
     }
     await record(result);

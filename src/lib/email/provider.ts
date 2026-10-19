@@ -66,9 +66,9 @@ export class SmtpProvider implements EmailProvider {
     try {
       const info = await this.transport.sendMail({ ...validated, from: fromName ? { name: fromName, address: validated.from } : validated.from });
       return { id: info.messageId, provider: "smtp" };
-    } catch {
-      // Provider diagnostics can echo credentials or addresses; callers get a generic failure.
-      throw new Error("Email delivery failed.");
+    } catch (error) {
+      // Provider diagnostics can echo credentials or addresses; callers get a safe, specific reason instead.
+      throw new EmailSetupError(smtpFailure(error));
     }
   }
 }
@@ -79,17 +79,74 @@ const emailMode = () => {
   return mode ?? (process.env.NODE_ENV === "production" ? "resend" : "console");
 };
 
+/**
+ * Email is misconfigured or a provider refused the message. Messages name settings and causes, never secret values,
+ * so they are safe to show owners in run details and the Email log.
+ */
+export class EmailSetupError extends Error {}
+
+/** Delivery setup problems for the active provider (empty when ready). */
+export function emailConfigProblems(): string[] {
+  const mode = process.env.EMAIL_PROVIDER?.trim();
+  if (mode && !["console", "resend", "smtp"].includes(mode)) return [`Invalid EMAIL_PROVIDER "${mode}"; use smtp, resend or console (lower case, no quotes).`];
+  const problems: string[] = [];
+  const active = mode || (process.env.NODE_ENV === "production" ? "resend" : "console");
+  if (active === "smtp") {
+    const user = process.env.SMTP_USER?.trim() ?? "";
+    const pass = (process.env.SMTP_PASS ?? "").replace(/\s+/g, "");
+    const port = Number(process.env.SMTP_PORT || 465);
+    if (!z.string().email().safeParse((process.env.SMTP_FROM || user).trim()).success) problems.push("SMTP_USER must be the full sending address, e.g. prem@davnoot.com.");
+    if (!pass) problems.push("SMTP_PASS is empty; add the Gmail app password.");
+    else if ((process.env.SMTP_HOST || "smtp.gmail.com").includes("gmail") && pass.length !== 16) problems.push(`SMTP_PASS has ${pass.length} characters; a Gmail app password has 16.`);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) problems.push("SMTP_PORT must be a number such as 465.");
+  }
+  if (active === "resend" && !process.env.RESEND_API_KEY?.trim()) problems.push("EMAIL_PROVIDER is resend (the production default) but RESEND_API_KEY is empty; set EMAIL_PROVIDER=smtp to use Gmail.");
+  const replyTo = process.env.EMAIL_REPLY_TO?.trim();
+  if (replyTo && !z.string().email().safeParse(replyTo).success) problems.push(`EMAIL_REPLY_TO "${replyTo}" is not an email address; leave it empty or fix it.`);
+  return problems;
+}
+
+/** Why APP_URL cannot build email links, or null. The value is deployment config, not a secret, so it may be shown. */
+export function appUrlProblem() {
+  const raw = process.env.APP_URL?.trim();
+  if (!raw) return "APP_URL is not set; set it to the site's address, e.g. https://redline-crm-chi.vercel.app.";
+  let base: URL;
+  try { base = new URL(raw); } catch { return `APP_URL "${raw}" is not a full address; it must start with https://.`; }
+  if (!/^https?:$/.test(base.protocol) || base.username || base.password || base.search || base.hash || base.pathname !== "/") {
+    return `APP_URL "${raw}" must be just the origin (e.g. https://redline-crm-chi.vercel.app) with no path.`;
+  }
+  return null;
+}
+
+/** Owner-facing summary of how email is sent right now. */
+export function emailDeliveryStatus() {
+  const problems = [...emailConfigProblems(), appUrlProblem()].filter((problem): problem is string => Boolean(problem));
+  const mode = process.env.EMAIL_PROVIDER?.trim() || (process.env.NODE_ENV === "production" ? "resend" : "console");
+  const from = mode === "smtp" ? (process.env.SMTP_FROM || process.env.SMTP_USER || "").trim() || null : null;
+  return { mode, from, host: mode === "smtp" ? process.env.SMTP_HOST || "smtp.gmail.com" : null, replyTo: process.env.EMAIL_REPLY_TO?.trim() || null, problems };
+}
+
+/** A provider's refusal in words that are safe to store; never includes credentials or server responses. */
+function smtpFailure(error: unknown) {
+  const code = error && typeof error === "object" && "code" in error ? String((error as { code: unknown }).code) : "";
+  if (code === "EAUTH") return "Gmail rejected the sign-in: check SMTP_USER and that SMTP_PASS is a current app password for that account.";
+  if (["ECONNECTION", "ETIMEDOUT", "ESOCKET", "EDNS", "ECONNREFUSED"].includes(code)) return "Could not connect to the SMTP server; check SMTP_HOST and SMTP_PORT (Gmail: smtp.gmail.com, 465).";
+  if (code === "EENVELOPE") return "The mail server rejected the recipient address.";
+  if (code === "EMESSAGE") return "The mail server rejected the message.";
+  return "Email delivery failed.";
+}
+
 /** Sender for system email: the configured address, or a placeholder that only the console provider accepts. */
 export function senderAddress(emailFrom: string | null) {
   // SMTP accounts can only send as themselves, so their address wins over the settings value.
   if (emailMode() === "smtp") {
     const account = (process.env.SMTP_FROM || process.env.SMTP_USER || "").trim();
-    if (!z.string().email().safeParse(account).success) throw new Error("Set SMTP_USER (or SMTP_FROM) to the sending address.");
+    if (!z.string().email().safeParse(account).success) throw new EmailSetupError("SMTP_USER must be the full sending address, e.g. prem@davnoot.com.");
     return account;
   }
   const consoleMode = process.env.EMAIL_PROVIDER === "console" || (!process.env.EMAIL_PROVIDER && process.env.NODE_ENV !== "production");
   const from = emailFrom ?? (consoleMode ? "demo@example.invalid" : null);
-  if (!from) throw new Error("Configure settings.emailFrom with a verified sender before sending email.");
+  if (!from) throw new EmailSetupError("No sender address: set EMAIL_PROVIDER=smtp with SMTP_USER, or Settings → Branding → sender email.");
   return from;
 }
 
@@ -110,7 +167,7 @@ export async function sendAndLog(message: EmailMessage, refs: EmailRefs, provide
     const { recordEmail } = await import("@/modules/automations/service");
     await recordEmail({ to: message.to, subject: message.subject, html: message.html, templateKey: refs.templateKey ?? null,
       leadId: refs.leadId ?? null, vehicleId: refs.vehicleId ?? null, provider: receipt?.provider ?? provider,
-      status: failure ? "failed" : "sent", error: failure ? DELIVERY_FAILED : null, sentAt: new Date().toISOString() });
+      status: failure ? "failed" : "sent", error: failure ? (failure instanceof EmailSetupError ? failure.message : DELIVERY_FAILED) : null, sentAt: new Date().toISOString() });
   } catch { console.error("Email log write failed.", { leadId: refs.leadId ?? null, templateKey: refs.templateKey ?? null }); }
   if (failure) throw failure;
   return receipt!;
@@ -149,6 +206,8 @@ export const isLoggedProvider = (provider: EmailProvider) => logged in provider;
  * Every send through the returned provider (console or Resend) is written to the Email log, failures included.
  */
 export function getEmailProvider(): EmailProvider {
+  const problems = emailConfigProblems();
+  if (problems.length) throw new EmailSetupError(problems.join(" "));
   const mode = emailMode();
   if (mode === "smtp") return new LoggedSmtpProvider({ host: process.env.SMTP_HOST || "smtp.gmail.com", port: Number(process.env.SMTP_PORT || 465),
     user: process.env.SMTP_USER ?? "", pass: (process.env.SMTP_PASS ?? "").replace(/\s+/g, "") });

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { AlertTriangle, ArrowRight, CalendarClock, CarFront, Clock3, Mail, Play, UserPlus, Zap, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/shared/page-header";
+import { emailDeliveryStatus } from "@/lib/email/provider";
+import { EmailDeliveryCard } from "./email-delivery-card";
 import { requestNow } from "@/lib/clock";
 import { requirePageUser } from "@/modules/auth/page-guards";
 import { startOfLocalMonth } from "@/modules/appointments/slots";
@@ -51,7 +53,7 @@ function InkStat({ label, value, hint, icon: Icon, href, alert }: { label: strin
 
 /** Owner page: every recipe as a "When X → do Y" sentence with its switch, run counts and history, plus Run now. */
 export async function AutomationsScreen({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  await requirePageUser("owner");
+  const user = await requirePageUser("owner");
   const query = await searchParams;
   const recipe = typeof query.recipe === "string" && isAutomationRecipeKey(query.recipe) ? query.recipe : undefined;
   const settings = await getSettings();
@@ -84,6 +86,8 @@ export async function AutomationsScreen({ searchParams }: { searchParams: Promis
         <InkStat label={copy.emailsThisMonth} icon={Mail} value={emails} hint={copy.emailsHint} href="/crm/automations/emails" />
       </div>
     </section>
+
+    <EmailDeliveryCard status={emailDeliveryStatus()} defaultTo={user.email} />
 
     {recipeGroups.map((group) => {
       const { icon: GroupIcon, tile } = groupTiles[group];
