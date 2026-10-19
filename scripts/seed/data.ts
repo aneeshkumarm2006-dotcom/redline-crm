@@ -356,7 +356,7 @@ export function buildDemoData(passwordHashes: Record<string, string>, now = new 
         run(createdEvent, "lead_auto_assign", "lead.created", subject, at, `Assigned to ${assignee.name} (round-robin, ${place.name}).`);
         run(assignedEvent, "lead_assigned_alert", "lead.assigned", subject, at + 2000, `Alerted ${assignee.name} in the app and by email.`);
         notify(assignee.id, "lead.assigned", `${lead.name} — ${name}: new lead assigned to you.`, leadPath, at + 2000, assignedEvent);
-        email("new_lead", assignee.email, { salespersonName: assignee.name, customerName: lead.name, vehicleName: name, dealershipName: place.name,
+        email("new_lead", assignee.email, { salespersonName: assignee.name, customerName: lead.name, vehicleName: name, stockNo: vehicle.stockNo, dealershipName: place.name,
           customerMessage: lead.message, leadUrl: link(leadPath) }, at + 3000, refs);
       }
     } else if (spec.unassigned === "failed") {
@@ -371,7 +371,7 @@ export function buildDemoData(passwordHashes: Record<string, string>, now = new 
       run(createdEvent, "lead_follow_up_email", "lead.created", subject, at, "Walk-in customer: no follow-up email needed.", "skipped");
     } else {
       email("follow_up", lead.email, { customerName: lead.name, vehicleName: name, bookingUrl: link(`/book/${encodeURIComponent(lead.bookingToken)}`),
-        dealershipName: place.name, companyName: settings.brand.companyName }, at, refs, spec.emailFails ? "Recipient mailbox unavailable." : undefined);
+        dealershipName: place.name, dealershipPhone: place.phone, salespersonName: assignee?.name ?? settings.brand.companyName, companyName: settings.brand.companyName }, at, refs, spec.emailFails ? "Recipient mailbox unavailable." : undefined);
       run(createdEvent, "lead_follow_up_email", "lead.created", subject, at + 1000,
         spec.emailFails ? `Email to ${lead.email} failed: recipient mailbox unavailable.` : `Follow-up email with a booking link sent to ${lead.email}.`,
         spec.emailFails ? "failed" : "success");
@@ -454,7 +454,8 @@ export function buildDemoData(passwordHashes: Record<string, string>, now = new 
       const place = location(appointment.dealershipId);
       const at = runAt + 2 * HOUR;
       email("appointment_reminder", lead.email, { customerName: lead.name, vehicleName: vehicleName(vehicle), appointmentTime: when(Date.parse(appointment.startsAt)),
-        dealershipName: place.name, dealershipAddress: place.address, dealershipPhone: place.phone, companyName: settings.brand.companyName }, at, { leadId: lead.id, vehicleId: vehicle.id });
+        dealershipName: place.name, dealershipAddress: place.address, dealershipPhone: place.phone, companyName: settings.brand.companyName,
+        salespersonName: users.find((user) => user.id === appointment.salespersonId)?.name ?? settings.brand.companyName }, at, { leadId: lead.id, vehicleId: vehicle.id });
       run(`appt-reminder:${appointment.id}:${date}`, "appointment_customer_reminder", "schedule", { type: "appointment", id: appointment.id }, at, `Reminder email sent to ${lead.email}.`);
     }
   }

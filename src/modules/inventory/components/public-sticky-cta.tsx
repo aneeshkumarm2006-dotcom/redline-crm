@@ -17,14 +17,14 @@ export function PublicStickyCta({ price, testDriveHref, inquireHref, targetId }:
     observer.observe(target);
     return () => observer.disconnect();
   }, [targetId]);
-  const button = "inline-flex min-h-11 items-center justify-center rounded-lg px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
+  const button = "inline-flex min-h-12 items-center justify-center rounded-xl px-4 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
   return <div aria-label={copy.cta.label} role="region" aria-hidden={hidden || undefined} inert={hidden}
-    className={cn("fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_16px_rgba(0,0,0,0.06)] backdrop-blur transition-transform lg:hidden",
+    className={cn("fixed inset-x-0 bottom-0 z-40 border-t bg-white/90 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-xl backdrop-blur-md transition-transform duration-200 ease-out lg:hidden dark:bg-card/90",
       hidden && "translate-y-full")}>
-    <div className="mx-auto flex max-w-7xl items-center gap-3">
-      <p className="min-w-0 flex-1 truncate text-lg font-semibold tabular-nums">{price}</p>
-      <Link href={testDriveHref} className={cn(button, "border bg-background")}>{copy.cta.testDrive}</Link>
-      <Link href={inquireHref} className={cn(button, "bg-primary text-primary-foreground")}>{copy.cta.inquire}</Link>
+    <div className="flex items-center gap-2.5">
+      <p className="font-display min-w-0 flex-1 truncate text-xl font-bold tabular-nums">{price}</p>
+      <Link href={testDriveHref} className={cn(button, "bg-ink text-ink-foreground hover:bg-ink/90")}>{copy.cta.testDrive}</Link>
+      <Link href={inquireHref} className={cn(button, "bg-primary text-primary-foreground shadow-[0_6px_16px_-6px_color-mix(in_oklab,var(--primary)_70%,transparent)] hover:bg-primary/90")}>{copy.cta.inquire}</Link>
     </div>
   </div>;
 }

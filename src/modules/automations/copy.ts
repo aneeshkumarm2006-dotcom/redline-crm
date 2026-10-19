@@ -2,7 +2,7 @@ import type { AutomationRecipeKey, PlannedRecipeKey, RecipeGroup, ScheduledRunSu
 
 /** Settings values the recipe sentences quote, so the page always matches the live configuration. */
 export type RecipeSentenceValues = {
-  appointmentStage: string; warnDays: number; criticalDays: number; repairOverdueDays: number; uncontactedHours: number; manualAssignment: boolean;
+  appointmentStage: string; followUpDays: number[]; warnDays: number; criticalDays: number; repairOverdueDays: number; uncontactedHours: number; manualAssignment: boolean;
 };
 
 const plural = (count: number, one: string, many = `${one}s`) => `${count} ${count === 1 ? one : many}`;
@@ -30,6 +30,7 @@ export const recipeSentences: Record<AutomationRecipeKey, (values: RecipeSentenc
   uncontacted_lead_reminder: (values) => `Every morning, **if a new lead isn't contacted within ${values.uncontactedHours} hours**, **remind the salesperson**, then **escalate to the owner** after ${values.uncontactedHours * 2} hours`,
   appointment_customer_reminder: () => "Every morning, **for tomorrow's appointments**, **email the customer a reminder**",
   appointment_morning_alert: () => "Every morning, **for today's appointments**, **alert each salesperson** with their schedule",
+  lead_customer_follow_up: (values) => `If **a customer hasn't booked**, **email a follow-up** with their booking link on ${listNames(values.followUpDays.map((day) => `day ${day}`))}, then **stop once they book**`,
 };
 
 export const recipeNames: Record<AutomationRecipeKey, string> = {
@@ -38,6 +39,7 @@ export const recipeNames: Record<AutomationRecipeKey, string> = {
   vehicle_status_alert: "Status change alert", vehicle_price_alert: "Price change alert", repair_alert: "Repair alert", sale_recorded: "Sale alert",
   aging_inventory_reminder: "Aging stock reminder", repair_overdue_reminder: "Overdue repair reminder", uncontacted_lead_reminder: "Uncontacted lead reminder",
   appointment_customer_reminder: "Appointment reminder email", appointment_morning_alert: "Morning appointment alert",
+  lead_customer_follow_up: "Customer follow-up sequence",
 };
 
 export const plannedRecipes: Record<PlannedRecipeKey, { name: string; sentence: string }> = {
@@ -73,6 +75,9 @@ export const runDetails = {
   noRecipients: "No active staff to alert.",
   customerReminder: (email: string) => `Reminder email sent to ${email}.`,
   customerReminderFailed: "The reminder email could not be sent.",
+  followUp: (step: number, total: number, email: string, days: number) => `Follow-up ${step} of ${total} (day ${days}) sent to ${email}.`,
+  followUpFailed: "The follow-up email could not be sent.",
+  followUpSuperseded: "Skipped: a later follow-up was already due, so only that one was sent.",
   morning: (name: string, count: number, first: string) => `${name} alerted: ${plural(count, "appointment")} today, first at ${first}.`,
 };
 
@@ -108,7 +113,7 @@ export const automationsCopy = {
   outcomes: { success: "Done", failed: "Failed", skipped: "Skipped" },
   breakdown: (success: number, skipped: number, failed: number) => [`${success} done`, skipped ? `${skipped} skipped` : "", failed ? `${failed} failed` : ""].filter(Boolean).join(" · "),
   history: "History", historyFor: (name: string) => `Recent runs: ${name}`,
-  runNow: "Run now", running: "Running…", runNowHint: "Checks aging stock, overdue repairs, uncontacted leads and appointments now. Reminders never repeat on the same day.",
+  runNow: "Run now", running: "Running…", runNowHint: "Checks aging stock, overdue repairs, uncontacted leads, appointments and customer follow-ups now. Nothing is ever sent twice.",
   ranSummary: (summary: ScheduledRunSummary) => {
     const fired = summary.recipes.reduce((sum, entry) => sum + entry.fired, 0);
     const done = summary.recipes.reduce((sum, entry) => sum + entry.alreadyDone, 0);

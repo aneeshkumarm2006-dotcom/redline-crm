@@ -30,6 +30,7 @@ export const settingsCopy = {
     title: "Reminder thresholds", hint: "Used by the aging colours, Needs attention and the scheduled reminders.",
     warnDays: "Aging warning (days in stock)", criticalDays: "Aging critical (days in stock)",
     repairOverdueDays: "Repair overdue after (days)", uncontactedLeadHours: "Lead not contacted after (hours)",
+    customerFollowUpDays: "Customer follow-up emails (days after inquiry)", customerFollowUpHint: "Comma-separated, increasing, e.g. 2, 5. Stops once the customer books.",
   },
   errors: {
     statusInUse: (label: string) => `“${label}” is still the status of some vehicles.`,

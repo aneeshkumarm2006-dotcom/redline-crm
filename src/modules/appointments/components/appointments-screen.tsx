@@ -3,11 +3,12 @@ import Link from "next/link";
 import { CalendarDays, CalendarRange, List } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/shared/empty-state";
+import { PageHeader } from "@/components/shared/page-header";
 import { requirePageUser } from "@/modules/auth/page-guards";
 import { getVehicleSummaries } from "@/modules/inventory/service";
 import { getLeadSummaries } from "@/modules/leads/service";
 import { leadsCopy } from "@/modules/leads/copy";
-import { LeadsTabs } from "@/modules/leads/components/leads-tabs";
+import { LeadsTabs, segmentClass, segmentGroup } from "@/modules/leads/components/leads-tabs";
 import { getSettings } from "@/modules/settings/service";
 import { getStaffNames, listSalespeople } from "@/modules/users/service";
 import { listDealerships } from "@/modules/dealerships/service";
@@ -37,9 +38,9 @@ export type DescribedAppointment = Awaited<ReturnType<typeof describeAppointment
 export function AppointmentList({ appointments, timeZone, showDate, showSalesperson }: { appointments: DescribedAppointment[]; timeZone: string; showDate: boolean; showSalesperson: boolean }) {
   const time = new Intl.DateTimeFormat("en-CA", { timeStyle: "short", timeZone });
   const day = new Intl.DateTimeFormat("en-CA", { weekday: "short", month: "short", day: "numeric", timeZone });
-  return <ul className="divide-y rounded-xl border bg-card">{appointments.map((entry) => {
+  return <ul className="divide-y overflow-clip rounded-2xl border bg-card shadow-xs">{appointments.map((entry) => {
     const body = <>
-      <span className="flex w-20 shrink-0 flex-col text-sm font-semibold tabular-nums">
+      <span className="flex w-20 shrink-0 flex-col rounded-xl bg-muted px-2.5 py-2 text-center text-sm font-semibold tabular-nums">
         {showDate && <span className="text-xs font-normal text-muted-foreground">{day.format(new Date(entry.startsAt))}</span>}
         {time.format(new Date(entry.startsAt))}
       </span>
@@ -50,8 +51,8 @@ export function AppointmentList({ appointments, timeZone, showDate, showSalesper
       </span>
     </>;
     return <li key={entry.id} data-appointment={entry.id}>{entry.leadVisible
-      ? <Link href={`/crm/leads/${entry.leadId}`} className="flex min-h-16 items-start gap-3 p-4 hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-ring">{body}</Link>
-      : <div className="flex min-h-16 items-start gap-3 p-4">{body}</div>}</li>;
+      ? <Link href={`/crm/leads/${entry.leadId}`} className="flex min-h-16 items-center gap-4 p-4 transition-colors hover:bg-muted/40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring">{body}</Link>
+      : <div className="flex min-h-16 items-center gap-4 p-4">{body}</div>}</li>;
   })}</ul>;
 }
 
@@ -64,21 +65,20 @@ export async function AppointmentsScreen({ searchParams }: { searchParams: Promi
   const zone = settings.booking.timeZone;
   const now = requestNow();
   const owner = user.role === "owner";
-  const header = <header className="space-y-4">
-    <div><h1 className="text-3xl font-semibold tracking-tight">{leadsCopy.title}</h1><p className="mt-2 text-sm text-muted-foreground">{owner ? copy.intro : copy.introMine}</p></div>
-    <div className="flex flex-wrap items-center justify-between gap-3">
+  const header = <PageHeader title={leadsCopy.title} description={owner ? copy.intro : copy.introMine}>
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
       <LeadsTabs active="appointments" />
-      <nav aria-label={copy.viewLabel} className="inline-flex rounded-lg border bg-card p-0.5">
+      <nav aria-label={copy.viewLabel} className={segmentGroup}>
         {(["list", "week"] as const).map((entry) => {
           const Icon = entry === "list" ? List : CalendarRange;
           const active = (entry === "week") === week;
           return <Link key={entry} href={entry === "week" ? "/crm/leads/appointments?view=week" : "/crm/leads/appointments"} aria-current={active ? "page" : undefined}
-            className={cn("inline-flex min-h-10 items-center gap-2 rounded-md px-3 text-sm font-medium", active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}>
+            className={cn(segmentClass(active), "min-h-10")}>
             <Icon aria-hidden className="size-4" />{copy.views[entry]}</Link>;
         })}
       </nav>
     </div>
-  </header>;
+  </PageHeader>;
   if (week) {
     const [dealerships, salespeople] = await Promise.all([owner ? listDealerships() : [], owner ? listSalespeople() : []]);
     return <>{header}<AppointmentsCalendar query={{ week: text("week"), dealershipId: text("dealershipId"), salespersonId: text("salespersonId") }} settings={settings} now={now} owner={owner}
@@ -90,15 +90,17 @@ export async function AppointmentsScreen({ searchParams }: { searchParams: Promi
   const later = appointments.filter((entry) => localDate(Date.parse(entry.startsAt), zone) !== today);
   return <>
     {header}
-    {!appointments.length ? <EmptyState icon={CalendarDays} title={copy.empty} description={copy.emptyHint} /> : <>
-      <section aria-labelledby="appointments-today" className="space-y-3">
-        <h2 id="appointments-today" className="font-semibold">{copy.today} <span className="font-normal text-muted-foreground">· {todays.length}</span></h2>
-        {todays.length ? <AppointmentList appointments={todays} timeZone={zone} showDate={false} showSalesperson={owner} /> : <p className="rounded-xl border border-dashed bg-card p-4 text-sm text-muted-foreground">{copy.noneToday}</p>}
+    {!appointments.length ? <EmptyState icon={CalendarDays} title={copy.empty} description={copy.emptyHint} /> : <div className="grid gap-6 xl:grid-cols-12">
+      <section aria-labelledby="appointments-today" className="min-w-0 space-y-3 xl:col-span-5">
+        <h2 id="appointments-today" className="flex min-h-10 items-center gap-2.5 text-lg font-semibold tracking-tight">{copy.today}
+          <span className={cn("inline-flex min-w-7 items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums", todays.length ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}><span className="sr-only">· </span>{todays.length}</span></h2>
+        {todays.length ? <AppointmentList appointments={todays} timeZone={zone} showDate={false} showSalesperson={owner} /> : <p className="rounded-2xl border bg-card p-5 text-sm text-muted-foreground shadow-xs">{copy.noneToday}</p>}
       </section>
-      <section aria-labelledby="appointments-upcoming" className="space-y-3">
-        <h2 id="appointments-upcoming" className="font-semibold">{copy.upcoming} <span className="font-normal text-muted-foreground">· {later.length}</span></h2>
-        {later.length ? <AppointmentList appointments={later} timeZone={zone} showDate showSalesperson={owner} /> : <p className="rounded-xl border border-dashed bg-card p-4 text-sm text-muted-foreground">{copy.noneUpcoming}</p>}
+      <section aria-labelledby="appointments-upcoming" className="min-w-0 space-y-3 xl:col-span-7">
+        <h2 id="appointments-upcoming" className="flex min-h-10 items-center gap-2.5 text-lg font-semibold tracking-tight">{copy.upcoming}
+          <span className="inline-flex min-w-7 items-center justify-center rounded-full bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-muted-foreground"><span className="sr-only">· </span>{later.length}</span></h2>
+        {later.length ? <AppointmentList appointments={later} timeZone={zone} showDate showSalesperson={owner} /> : <p className="rounded-2xl border bg-card p-5 text-sm text-muted-foreground shadow-xs">{copy.noneUpcoming}</p>}
       </section>
-    </>}
+    </div>}
   </>;
 }

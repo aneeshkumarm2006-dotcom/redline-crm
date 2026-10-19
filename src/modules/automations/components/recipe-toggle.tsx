@@ -22,10 +22,9 @@ export function RecipeToggle({ recipeKey, name, enabled }: { recipeKey: Automati
     });
   }
   return <button type="button" role="switch" aria-checked={checked} aria-label={copy.toggle(name)} disabled={pending} onClick={toggle}
-    className="group inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-1 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-70">
-    <span aria-hidden className={cn("w-7 text-right", checked ? "text-success" : "text-muted-foreground")}>{checked ? copy.on : copy.off}</span>
-    <span aria-hidden className={cn("relative inline-flex h-7 w-12 items-center rounded-full transition-colors", checked ? "bg-success" : "bg-muted-foreground/30")}>
-      <span className={cn("absolute size-5 rounded-full bg-white shadow-sm transition-transform", checked ? "translate-x-6" : "translate-x-1")} />
+    className="group inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-70">
+    <span aria-hidden className={cn("relative inline-flex h-7 w-12 items-center rounded-full shadow-inner transition-colors duration-200 ease-out", checked ? "bg-success" : "bg-muted-foreground/30 group-hover:bg-muted-foreground/40")}>
+      <span className={cn("absolute size-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out", checked ? "translate-x-6" : "translate-x-1")} />
     </span>
   </button>;
 }

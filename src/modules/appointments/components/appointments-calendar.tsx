@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { DropdownField } from "@/components/ui/dropdown-field";
 import { Avatar } from "@/components/shared/avatar";
 import { weekdays } from "@/modules/settings/schema";
 import type { Settings } from "@/modules/settings/schema";
@@ -42,52 +43,53 @@ export async function AppointmentsCalendar({ query, settings, now, owner, dealer
   const time = new Intl.DateTimeFormat("en-CA", { timeStyle: "short", timeZone: zone });
   const dayLabel = new Intl.DateTimeFormat("en-CA", { weekday: "short", day: "numeric", timeZone: "UTC" });
   const rangeLabel = new Intl.DateTimeFormat("en-CA", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
-  const selectClass = "min-h-11 w-full min-w-0 rounded-md border bg-background px-3 text-base";
   const people = dealershipId ? salespeople.filter((entry) => entry.dealershipId === dealershipId || entry.id === salespersonId) : salespeople;
   return <section aria-labelledby="calendar-week" className="space-y-4">
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <nav aria-label={copy.weekNav} className="flex items-center gap-1">
-        <Button asChild variant="outline" size="icon" className="size-11"><Link href={calendarHref({ ...filters, week: addDays(monday, -7) })} aria-label={copy.previousWeek}><ChevronLeft aria-hidden className="size-4" /></Link></Button>
-        <h2 id="calendar-week" className="min-w-0 px-2 text-sm font-semibold tabular-nums sm:text-base">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-2 shadow-xs sm:p-2.5">
+      <nav aria-label={copy.weekNav} className="flex min-w-0 items-center gap-1">
+        <Button asChild variant="ghost" size="icon" className="size-11 rounded-xl"><Link href={calendarHref({ ...filters, week: addDays(monday, -7) })} aria-label={copy.previousWeek}><ChevronLeft aria-hidden className="size-4" /></Link></Button>
+        <h2 id="calendar-week" className="font-display min-w-0 px-1.5 text-base font-semibold tabular-nums sm:text-lg">
           {rangeLabel.formatRange(new Date(`${monday}T12:00:00Z`), new Date(`${addDays(monday, 6)}T12:00:00Z`))}
         </h2>
-        <Button asChild variant="outline" size="icon" className="size-11"><Link href={calendarHref({ ...filters, week: addDays(monday, 7) })} aria-label={copy.nextWeek}><ChevronRight aria-hidden className="size-4" /></Link></Button>
-        {!days.some((day) => day.date === today) && <Button asChild variant="ghost" className="min-h-11"><Link href={calendarHref(filters)}>{copy.thisWeek}</Link></Button>}
+        <Button asChild variant="ghost" size="icon" className="size-11 rounded-xl"><Link href={calendarHref({ ...filters, week: addDays(monday, 7) })} aria-label={copy.nextWeek}><ChevronRight aria-hidden className="size-4" /></Link></Button>
+        {!days.some((day) => day.date === today) && <Button asChild variant="outline" className="ml-1 min-h-11 rounded-xl"><Link href={calendarHref(filters)}>{copy.thisWeek}</Link></Button>}
       </nav>
-      <p className="text-sm text-muted-foreground">{copy.weekCount(appointments.length)}</p>
+      <p className="rounded-full bg-muted px-3 py-1 text-sm font-medium tabular-nums text-muted-foreground">{copy.weekCount(appointments.length)}</p>
     </div>
-    {owner && <form action="/crm/leads/appointments" aria-label={copy.filters} className="grid gap-3 rounded-xl border bg-card p-3 sm:grid-cols-[1fr_1fr_auto]">
+    {owner && <form action="/crm/leads/appointments" aria-label={copy.filters} className="grid gap-4 rounded-2xl border bg-card p-5 shadow-xs sm:grid-cols-[1fr_1fr_auto]">
       <input type="hidden" name="view" value="week" />
       <input type="hidden" name="week" value={monday} />
-      <label className="min-w-0 space-y-1.5"><span className="text-sm font-medium">{copy.location}</span>
-        <select name="dealershipId" defaultValue={dealershipId ?? ""} className={selectClass}><option value="">{copy.allLocations}</option>{dealerships.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}</select></label>
-      <label className="min-w-0 space-y-1.5"><span className="text-sm font-medium">{copy.salesperson}</span>
-        <select name="salespersonId" defaultValue={salespersonId ?? ""} className={selectClass}><option value="">{copy.allSalespeople}</option>{people.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}</select></label>
+      <label className="min-w-0 space-y-2"><span className="text-sm font-medium">{copy.location}</span>
+        <DropdownField name="dealershipId" defaultValue={dealershipId ?? ""} options={[{ value: "", label: copy.allLocations }, ...dealerships.map((entry) => ({ value: entry.id, label: entry.name }))]} /></label>
+      <label className="min-w-0 space-y-2"><span className="text-sm font-medium">{copy.salesperson}</span>
+        <DropdownField name="salespersonId" defaultValue={salespersonId ?? ""} options={[{ value: "", label: copy.allSalespeople }, ...people.map((entry) => ({ value: entry.id, label: entry.name }))]} /></label>
       <Button type="submit" className="min-h-11 self-end">{copy.apply}</Button>
     </form>}
-    <ol className="grid gap-3 lg:grid-cols-7 lg:gap-2">{days.map((day) => {
+    <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">{days.map((day) => {
       const entries = appointments.filter((entry) => localDate(Date.parse(entry.startsAt), zone) === day.date);
       const closed = !settings.booking.businessHours[day.name];
       const isToday = day.date === today;
       return <li key={day.date} aria-label={dayLabel.format(new Date(`${day.date}T12:00:00Z`))}
-        className={cn("flex min-w-0 flex-col rounded-xl border bg-card lg:min-h-48", isToday && "border-primary ring-1 ring-primary", closed && !entries.length && "bg-muted/40")}>
-        <h3 className="flex items-center justify-between gap-2 border-b px-3 py-2 text-sm font-semibold">
-          <span className={cn(isToday && "text-primary")}>{dayLabel.format(new Date(`${day.date}T12:00:00Z`))}{isToday && <span className="ml-1.5 text-xs font-medium">· {copy.today}</span>}</span>
-          {entries.length > 0 && <span className="rounded-full bg-muted px-2 py-0.5 text-xs tabular-nums text-muted-foreground">{entries.length}</span>}
+        className={cn("flex min-w-0 flex-col overflow-clip rounded-2xl border bg-card shadow-xs xl:min-h-56", closed && !entries.length && "bg-muted/50 shadow-none")}>
+        <h3 className={cn("flex min-h-11 items-center justify-between gap-2 border-b px-3 py-2 text-sm font-semibold", isToday && "bg-brand-soft")}>
+          <span className="flex min-w-0 items-center gap-2">{dayLabel.format(new Date(`${day.date}T12:00:00Z`))}
+            {isToday && <span className="rounded-full bg-primary px-2 py-0.5 text-[0.6875rem] font-semibold text-primary-foreground">{copy.today}</span>}</span>
+          {entries.length > 0 && <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-card px-1.5 py-0.5 text-xs font-semibold tabular-nums text-foreground ring-1 ring-border">{entries.length}</span>}
         </h3>
         {!entries.length ? <p className="px-3 py-3 text-xs text-muted-foreground">{closed ? copy.closed : copy.noneDay}</p>
-          : <ul className="space-y-1.5 p-2">{entries.map((entry) => {
+          : <ul className="space-y-2 p-2">{entries.map((entry) => {
             const completed = entry.status !== "booked";
             const body = <>
-              <span className="flex items-center justify-between gap-2 text-xs font-semibold tabular-nums">{time.format(new Date(entry.startsAt))}
-                {completed && <span className="font-normal text-muted-foreground">{copy.status[entry.status] ?? entry.status}</span>}</span>
-              <span className="block break-words text-sm font-medium">{entry.leadName}</span>
+              <span className="flex items-center justify-between gap-2 text-xs font-semibold tabular-nums">
+                <span className="inline-flex items-center gap-1.5"><span aria-hidden className={cn("size-2 shrink-0 rounded-full", completed ? "bg-muted-foreground/50" : "bg-primary")} />{time.format(new Date(entry.startsAt))}</span>
+                {completed && <span className="rounded-full bg-muted px-1.5 py-0.5 text-[0.6875rem] font-medium text-muted-foreground">{copy.status[entry.status] ?? entry.status}</span>}</span>
+              <span className="mt-1 block break-words text-sm font-medium">{entry.leadName}</span>
               <span className="block truncate text-xs text-muted-foreground">{entry.vehicleName}</span>
-              {owner && <span className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"><Avatar name={entry.salespersonName} size="sm" /><span className="truncate">{entry.salespersonName}</span></span>}
+              {owner && <span className="mt-1.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"><Avatar name={entry.salespersonName} size="sm" /><span className="truncate">{entry.salespersonName}</span></span>}
             </>;
-            const classes = cn("block rounded-lg border-l-4 bg-muted/40 px-2.5 py-2", completed ? "border-l-muted-foreground/40 opacity-75" : "border-l-primary");
+            const classes = cn("block rounded-xl border px-2.5 py-2", completed ? "bg-muted/50" : "bg-card shadow-xs");
             return <li key={entry.id} data-appointment={entry.id}>{entry.leadVisible
-              ? <Link href={`/crm/leads/${entry.leadId}`} className={cn(classes, "min-h-11 transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring")}>{body}</Link>
+              ? <Link href={`/crm/leads/${entry.leadId}`} className={cn(classes, "min-h-11 transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:border-foreground/15 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring")}>{body}</Link>
               : <div className={classes}>{body}</div>}</li>;
           })}</ul>}
       </li>;

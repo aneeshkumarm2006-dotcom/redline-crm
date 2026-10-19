@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Bell } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { getUnreadSummaryAction } from "../actions";
 import { alertsCopy as copy } from "../copy";
 
@@ -38,9 +39,10 @@ export function NotificationBell({ initialUnread, initialLatestId }: { initialUn
     return () => { active = false; window.clearInterval(timer); document.removeEventListener("visibilitychange", check); };
   }, [pathname, router]);
   return <Link href="/crm/alerts" aria-label={copy.bell(unread)} data-unread-count={unread}
-    className="relative flex size-11 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+    className={cn("relative flex size-11 shrink-0 items-center justify-center rounded-xl border transition-[background-color,border-color,color,box-shadow] duration-150 ease-out hover:border-border hover:bg-card hover:text-foreground hover:shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+      pathname.startsWith("/crm/alerts") ? "border-border bg-card text-foreground shadow-xs" : "border-transparent text-muted-foreground")}>
     <Bell aria-hidden className="size-5" />
-    {unread > 0 && <span aria-hidden className="absolute top-1 right-1 flex min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold leading-5 text-primary-foreground tabular-nums">
+    {unread > 0 && <span aria-hidden className="absolute -top-0.5 -right-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-xs leading-5 font-semibold text-primary-foreground tabular-nums ring-2 ring-background">
       {unread > 99 ? "99+" : unread}
     </span>}
   </Link>;

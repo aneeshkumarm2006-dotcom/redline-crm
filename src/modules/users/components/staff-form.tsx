@@ -2,7 +2,10 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { UserPlus } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { DropdownField } from "@/components/ui/dropdown-field";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose, SheetTrigger } from "@/components/ui/sheet";
 import { brandTheme } from "@/components/shared/app-shell/theme";
@@ -10,7 +13,6 @@ import { staffFormSchema, type User } from "../schema";
 import { createSalespersonAction, updateSalespersonAction } from "../actions";
 import { staffCopy as copy } from "../copy";
 
-const controls = "min-h-11 w-full min-w-0 rounded-md border bg-background px-3 py-2 text-base";
 const fieldNames = ["name", "email", "phone", "monthlyTarget", "hiredAt"] as const;
 
 /** Owner add (no `user`) or edit sheet for a salesperson. A new account's temporary password is shown once. */
@@ -55,33 +57,32 @@ export function StaffFormSheet({ user, dealerships, primaryColor }: { user?: Use
   }
   const title = user ? copy.edit : copy.add;
   return <Sheet open={open} onOpenChange={change}>
-    <SheetTrigger asChild><Button variant={user ? "outline" : "default"} className="min-h-11">{title}</Button></SheetTrigger>
-    <SheetContent side="bottom" showCloseButton={false} style={brandTheme(primaryColor)} className="max-h-[90dvh] overflow-y-auto rounded-t-2xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:mx-auto sm:max-w-lg">
-      <SheetHeader className="p-0 pr-16"><SheetTitle>{created ? copy.passwordTitle : title}</SheetTitle><SheetDescription>{created ? copy.passwordHint : user ? copy.editHint : copy.addHint}</SheetDescription></SheetHeader>
-      <SheetClose asChild><Button variant="ghost" disabled={pending} className="absolute right-2 top-2 min-h-11 min-w-11">{copy.close}</Button></SheetClose>
+    <SheetTrigger asChild><Button variant={user ? "outline" : "default"} className="min-h-11 gap-2">{!user && <UserPlus aria-hidden className="size-4" />}{title}</Button></SheetTrigger>
+    <SheetContent side="bottom" showCloseButton={false} style={brandTheme(primaryColor)} className="max-h-[90dvh] gap-5 overflow-y-auto rounded-t-[1.25rem] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-xl sm:mx-auto sm:max-w-xl sm:p-6">
+      <SheetHeader className="p-0 pr-16"><SheetTitle className="text-xl font-semibold tracking-tight">{created ? copy.passwordTitle : title}</SheetTitle><SheetDescription>{created ? copy.passwordHint : user ? copy.editHint : copy.addHint}</SheetDescription></SheetHeader>
+      <SheetClose asChild><Button variant="ghost" disabled={pending} className="absolute right-3 top-3 min-h-11 min-w-11 rounded-xl">{copy.close}</Button></SheetClose>
       {created ? <div className="space-y-4">
-        <output className="block select-all break-all rounded-lg border bg-muted px-4 py-3 font-mono text-lg tracking-wide">{created.password}</output>
+        <output className="block select-all break-all rounded-xl border border-dashed bg-muted/60 px-4 py-4 text-center font-mono text-xl font-semibold tracking-wider">{created.password}</output>
         <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" className="min-h-11" onClick={copyPassword}>{copy.copy}</Button><Button type="button" className="min-h-11 flex-1" onClick={() => change(false)}>{copy.done}</Button></div>
       </div> : <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); submit(new FormData(event.currentTarget)); }}>
-        <fieldset disabled={pending} className="grid gap-4 sm:grid-cols-2">
-          {fieldNames.map((name) => <label key={name} className={`min-w-0 space-y-2 ${name === "name" || name === "email" ? "sm:col-span-2" : ""}`}>
-            <span className="text-sm font-medium">{copy.fields[name]}</span>
+        <fieldset disabled={pending} className="grid gap-4 rounded-2xl border bg-card p-4 shadow-xs sm:grid-cols-2 sm:p-5">
+          {fieldNames.map((name) => <label key={name} className={cn("min-w-0 space-y-2", (name === "name" || name === "email") && "sm:col-span-2")}>
+            <span className="block text-sm font-medium">{copy.fields[name]}</span>
             <Input name={name} type={name === "email" ? "email" : name === "phone" ? "tel" : name === "monthlyTarget" ? "number" : name === "hiredAt" ? "date" : "text"}
               required={name === "name" || name === "email"} min={name === "monthlyTarget" ? 0 : undefined} max={name === "monthlyTarget" ? 1000 : undefined} step={name === "monthlyTarget" ? 1 : undefined}
               defaultValue={name === "hiredAt" ? user?.hiredAt?.slice(0, 10) ?? "" : user?.[name] ?? ""} autoComplete="off"
-              className="min-h-11 text-base" aria-invalid={!!fields[name]} aria-describedby={fields[name] ? `staff-error-${name}` : undefined} />
+              className="min-h-11 text-base md:text-sm" aria-invalid={!!fields[name]} aria-describedby={fields[name] ? `staff-error-${name}` : undefined} />
             {fields[name] && <span id={`staff-error-${name}`} className="block text-sm text-destructive">{fields[name]}</span>}
           </label>)}
-          <label className="min-w-0 space-y-2 sm:col-span-2"><span className="text-sm font-medium">{copy.fields.dealership}</span>
-            <select name="dealershipId" required defaultValue={user?.dealershipId ?? ""} className={controls}>
-              <option value="" disabled>{copy.chooseLocation}</option>{locations.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}{entry.active ? "" : ` (${copy.inactiveLocation})`}</option>)}
-            </select>{fields.dealershipId && <span className="block text-sm text-destructive">{fields.dealershipId}</span>}</label>
-          {user && <label className="flex min-h-11 cursor-pointer items-start gap-3 sm:col-span-2">
-            <input type="checkbox" name="active" defaultChecked={user.active} className="mt-1 size-5 accent-primary" />
+          <label className="min-w-0 space-y-2 sm:col-span-2"><span className="block text-sm font-medium">{copy.fields.dealership}</span>
+            <DropdownField name="dealershipId" required defaultValue={user?.dealershipId ?? ""} placeholder={copy.chooseLocation}
+              options={locations.map((entry) => ({ value: entry.id, label: `${entry.name}${entry.active ? "" : ` (${copy.inactiveLocation})`}` }))} />{fields.dealershipId && <span className="block text-sm text-destructive">{fields.dealershipId}</span>}</label>
+          {user && <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border bg-muted/40 p-3.5 transition-colors hover:bg-muted/70 has-focus-visible:outline-2 has-focus-visible:outline-ring sm:col-span-2">
+            <input type="checkbox" name="active" defaultChecked={user.active} className="mt-0.5 size-5 shrink-0 accent-primary" />
             <span><span className="block text-sm font-medium">{copy.fields.active}</span><span className="block text-xs text-muted-foreground">{copy.fields.activeHint}</span></span>
           </label>}
         </fieldset>
-        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+        {error && <p role="alert" className="rounded-lg bg-destructive/10 px-3.5 py-2.5 text-sm font-medium text-destructive">{error}</p>}
         <Button type="submit" className="min-h-11 w-full" disabled={pending}>{pending ? copy.saving : user ? copy.save : copy.create}</Button>
       </form>}
     </SheetContent>

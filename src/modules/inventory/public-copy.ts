@@ -27,6 +27,22 @@ export const publicInventoryCopy = {
     { key: "trade", title: "Trade-ins welcome", text: "Bring your current vehicle for a fair, no-obligation appraisal." },
   ],
   cta: { label: "Contact the dealership", testDrive: "Test drive", inquire: "Inquire" },
+  // Showroom redesign
+  heroTitle: { lead: "Find your next", accent: "vehicle" },
+  heroReady: (count: number) => `${count} vehicle${count === 1 ? "" : "s"} ready`,
+  localTrust: { title: (count: number) => `${count} local location${count === 1 ? "" : "s"}`, text: "Visit, test drive and pick up at the dealership nearest you." },
+  showAll: "Show all locations", breadcrumb: "Breadcrumb", inventoryCrumb: "Inventory", stockShort: "Stock",
   testDriveTitle: "Book a test drive", testDriveIntro: "Send your details and we’ll email you a link to pick a time that suits you.",
   testDriveMessage: "I’d like to book a test drive.",
+  // Hero, search bar and toolbar
+  heroLive: (count: number, locations: number) => `${count} vehicle${count === 1 ? "" : "s"} ready today · ${locations} location${locations === 1 ? "" : "s"}`,
+  heroIntro: "Hand-picked, safety-inspected used cars across our locations. Browse the lot, book a test drive in a minute and meet your salesperson by name.",
+  heroBrowse: (count: number) => `Browse ${count} vehicle${count === 1 ? "" : "s"}`, heroLocations: "Find a location",
+  stats: { stock: "In stock", locations: "Locations", from: "Starting from" },
+  featured: "Featured", featuredView: "View this vehicle", inspected: "Safety inspected", inspectedHint: "Every car certified",
+  search: { label: "Search vehicles", keyword: "Search", keywordPlaceholder: "Make, model or stock #", make: "Make", anyMake: "Any make",
+    location: "Location", price: "Max price", anyPrice: "Any price", under: (price: string) => `Under ${price}`, submit: "Search" },
+  sort: { label: "Sort by", newest: "Newest arrivals", price_asc: "Price: low to high", price_desc: "Price: high to low", mileage_asc: "Lowest mileage" },
+  activeFilters: "Active filters", clearFilters: "Clear all", removeFilter: (label: string) => `Remove filter: ${label}`,
+  keywordChip: (q: string) => `“${q}”`, underChip: (price: string) => `Under ${price}`,
 } as const;

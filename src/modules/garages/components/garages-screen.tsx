@@ -1,12 +1,14 @@
 import Link from "next/link";
-import { Phone, Warehouse } from "lucide-react";
+import { AlarmClock, Hourglass, Phone, Wallet, Warehouse, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Board, type BoardColumn, type BoardGroup } from "@/components/shared/board";
 import { EmptyState } from "@/components/shared/empty-state";
+import { PageHeader } from "@/components/shared/page-header";
 import { StatusPill } from "@/components/shared/status-pill";
 import { KpiRow, StatCard } from "@/components/shared/stats/stat-card";
 import { requestNow } from "@/lib/clock";
 import { colorFromName } from "@/lib/color";
+import { cn } from "@/lib/utils";
 import { requirePageUser } from "@/modules/auth/page-guards";
 import { startOfLocalMonth } from "@/modules/appointments/slots";
 import { listDealerships } from "@/modules/dealerships/service";
@@ -22,10 +24,8 @@ const money = (value: number) => new Intl.NumberFormat("en-CA", { style: "curren
 /** Owner view of partner garages: cars at each one, time in repair, overdue repairs and this month's spend. */
 export async function GaragesScreen() {
   await requirePageUser("owner");
-  const header = <header className="flex flex-wrap items-start justify-between gap-4">
-    <div><h1 className="text-3xl font-semibold tracking-tight">{copy.title}</h1><p className="mt-2 text-sm text-muted-foreground">{copy.intro}</p></div>
-    <Button asChild variant="outline" className="min-h-11"><Link href="/crm/settings?tab=garages">{copy.manage}</Link></Button>
-  </header>;
+  const header = <PageHeader title={copy.title} description={copy.intro}
+    actions={<Button asChild variant="outline" className="min-h-11"><Link href="/crm/settings?tab=garages">{copy.manage}</Link></Button>} />;
   const settings = await getSettings();
   const now = requestNow();
   const monthStart = new Date(startOfLocalMonth(now, settings.booking.timeZone)).toISOString();
@@ -67,23 +67,24 @@ export async function GaragesScreen() {
   const overdue = stats.reduce((sum, entry) => sum + entry.overdue, 0);
   return <>
     {header}
-    <KpiRow label={copy.kpis}>
-      <StatCard label={copy.inRepair} value={vehicles.length} href={`/crm/inventory?status=${settings.statusRoles.repair}`} />
-      <StatCard label={copy.avgDays} value={copy.days(average(vehicles.map((car) => daysIn(car.repair!.startedAt))))} />
-      <StatCard label={copy.overdue} value={overdue} hint={copy.overdueHint(settings.repairOverdueDays)} className={overdue ? "border-danger/40" : undefined} />
-      <StatCard label={copy.spend} value={stats.reduce((sum, entry) => sum + entry.spend, 0)} format="money" hint={copy.completedHint(stats.reduce((sum, entry) => sum + entry.completed, 0))} />
+    <KpiRow label={copy.kpis} className="md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4">
+      <StatCard label={copy.inRepair} icon={Wrench} value={vehicles.length} href={`/crm/inventory?status=${settings.statusRoles.repair}`} />
+      <StatCard label={copy.avgDays} icon={Hourglass} value={copy.days(average(vehicles.map((car) => daysIn(car.repair!.startedAt))))} />
+      <StatCard label={copy.overdue} icon={AlarmClock} value={overdue} hint={copy.overdueHint(settings.repairOverdueDays)} className={overdue ? "border-danger/40" : undefined} />
+      <StatCard label={copy.spend} icon={Wallet} value={stats.reduce((sum, entry) => sum + entry.spend, 0)} format="money" hint={copy.completedHint(stats.reduce((sum, entry) => sum + entry.completed, 0))} />
     </KpiRow>
-    <section aria-label={copy.title} className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-      {stats.map(({ garage, cars, avgDays, overdue: late, spend: monthSpend }) => <article key={garage.id} className="min-w-0 rounded-xl border border-l-[6px] bg-card p-4" style={{ borderLeftColor: colorFromName(garage.name) }}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0"><h2 className="break-words font-semibold">{garage.name}{!garage.active && <span className="ml-2 text-xs font-normal text-muted-foreground">{copy.inactive}</span>}</h2>
-            <p className="break-words text-xs text-muted-foreground">{garage.address}</p></div>
-          <a href={`tel:${garage.phone}`} aria-label={copy.call(garage.name)} className="inline-flex size-11 shrink-0 items-center justify-center rounded-full border hover:bg-muted"><Phone aria-hidden className="size-4" /></a>
+    <section aria-label={copy.title} className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+      {stats.map(({ garage, cars, avgDays, overdue: late, spend: monthSpend }) => <article key={garage.id} className="flex min-w-0 flex-col rounded-2xl border bg-card p-5 shadow-xs sm:p-6">
+        <div className="flex items-start gap-3.5">
+          <span aria-hidden className="flex size-11 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `color-mix(in oklab, ${colorFromName(garage.name)} 14%, transparent)`, color: colorFromName(garage.name) }}><Warehouse className="size-5" /></span>
+          <div className="min-w-0 flex-1"><h2 className="break-words text-[0.9375rem] font-semibold tracking-tight">{garage.name}{!garage.active && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 align-middle text-xs font-medium text-muted-foreground">{copy.inactive}</span>}</h2>
+            <p className="mt-0.5 break-words text-sm text-muted-foreground">{garage.address}</p></div>
+          <a href={`tel:${garage.phone}`} aria-label={copy.call(garage.name)} className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl border bg-card text-foreground/80 shadow-xs transition-colors duration-150 hover:border-foreground/25 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"><Phone aria-hidden className="size-4" /></a>
         </div>
-        {garage.specialties.length > 0 && <div aria-label={copy.specialties} className="mt-3 flex flex-wrap gap-1.5">{garage.specialties.map((key) => <StatusPill key={key} option={repairType(key)} className="min-h-6 px-2.5" />)}</div>}
-        <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-2 xl:grid-cols-4">
+        {garage.specialties.length > 0 && <div aria-label={copy.specialties} className="mt-4 flex flex-wrap gap-1.5">{garage.specialties.map((key) => <StatusPill key={key} option={repairType(key)} className="min-h-6 px-2.5" />)}</div>}
+        <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4 border-t pt-4 sm:grid-cols-4 md:grid-cols-2 xl:grid-cols-4">
           {([[copy.carsHere, String(cars.length)], [copy.avgDays, copy.days(avgDays)], [copy.overdue, String(late)], [copy.spend, money(monthSpend)]] as const).map(([label, value]) =>
-            <div key={label} className="min-w-0"><dt className="text-xs leading-4 text-muted-foreground">{label}</dt><dd className={`mt-1 text-lg font-semibold tabular-nums ${label === copy.overdue && late ? "text-danger" : ""}`}>{value}</dd></div>)}
+            <div key={label} className="min-w-0"><dt className="eyebrow line-clamp-2">{label}</dt><dd className={cn("font-display mt-1 text-lg font-semibold tabular-nums", label === copy.overdue && late ? "text-danger" : "")}>{value}</dd></div>)}
         </dl>
       </article>)}
     </section>

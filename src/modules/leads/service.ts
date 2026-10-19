@@ -426,6 +426,17 @@ export async function listUncontactedLeadsForAutomation(before: string) {
   return documents.map(toStaffLead);
 }
 
+/** Internal: leads older than `before` that have not booked yet (stage before the appointment stage, not won or lost). */
+export async function listUnbookedLeadIdsForAutomation(before: string) {
+  const cutoff = new Date(z.string().datetime({ offset: true }).parse(before));
+  const settings = await getSettings();
+  const booked = settings.leadStages.find((stage) => stage.key === settings.booking.appointmentStageKey)?.order ?? Infinity;
+  const open = settings.leadStages.filter((stage) => stage.order < booked && stage.key !== settings.wonStageKey && stage.key !== settings.lostStageKey).map((stage) => stage.key);
+  await connectDb();
+  const documents = await LeadModel.find({ stage: { $in: open }, createdAt: { $lte: cutoff } }).select("_id createdAt").sort({ createdAt: 1, _id: 1 }).limit(500).lean().exec();
+  return documents.map((document) => ({ id: String(document._id), createdAt: new Date(document.createdAt as Date).toISOString() }));
+}
+
 /** Internal event audit. Reprocessing the same event cannot duplicate activity. */
 export async function appendLeadActivity(id: string, input: unknown) {
   const activity = activitySchema.parse(input);

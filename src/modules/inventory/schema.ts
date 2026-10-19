@@ -97,4 +97,13 @@ export type PublicVehicle = z.infer<typeof publicVehicleSchema>;
 export const publicBadges = ["price_drop", "new_arrival"] as const;
 export type PublicBadge = (typeof publicBadges)[number];
 export type PublicListing = PublicVehicle & { badge: PublicBadge | null };
-export const publicInventoryFilterSchema = inventoryFilterSchema.pick({ dealershipId: true, page: true });
+/** Public sort orders for the showroom. */
+export const publicSorts = ["newest", "price_asc", "price_desc", "mileage_asc"] as const;
+export type PublicSort = (typeof publicSorts)[number];
+export const publicInventoryFilterSchema = inventoryFilterSchema.pick({ dealershipId: true, page: true }).extend({
+  q: z.string().trim().max(80).default(""),
+  make: z.string().trim().min(1).max(40).optional(),
+  maxPrice: z.coerce.number().int().min(1000).max(1_000_000).optional(),
+  sort: z.enum(publicSorts).default("newest"),
+});
+export type PublicInventoryFilters = z.infer<typeof publicInventoryFilterSchema>;

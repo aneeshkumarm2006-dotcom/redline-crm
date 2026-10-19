@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { CalendarClock } from "lucide-react";
+import { CalendarClock, CarFront } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/shared/avatar";
@@ -31,20 +31,23 @@ export function PipelineCard({ lead, settings }: { lead: PipelineCardData; setti
     open={open} setOpen={(value) => { setOpen(value); setError(""); }} pending={pending} error={error}
     trigger={<div role="button" tabIndex={0} data-lead={lead.id} aria-label={`${lead.name}, ${lead.vehicle}. ${copy.moveStage}`} aria-busy={drag.saving || undefined}
       onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.currentTarget.click(); } }} {...drag.props}
-      className={cn("block w-full min-w-0 cursor-pointer space-y-2.5 rounded-xl border bg-card p-3 text-left shadow-xs transition-[colors,opacity] hover:border-foreground/20 hover:bg-muted/30 focus-visible:outline-2 focus-visible:outline-ring",
+      className={cn("relative block w-full min-w-0 cursor-pointer space-y-3 rounded-2xl border bg-card p-3.5 text-left shadow-xs transition-[border-color,box-shadow,transform,opacity] duration-200 ease-out hover:-translate-y-0.5 hover:border-foreground/15 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
         drag.props.draggable && "lg:cursor-grab lg:active:cursor-grabbing", (drag.dragging || drag.saving) && "opacity-50")}>
       <span className="flex items-start justify-between gap-2">
-        <span className="min-w-0 break-words text-sm font-semibold">{lead.name}</span>
-        <span className="shrink-0 text-xs text-muted-foreground">{lead.age}</span>
+        <span className="min-w-0 break-words text-sm font-semibold leading-5">{lead.name}</span>
+        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">{lead.age}</span>
       </span>
-      <span className="block truncate text-xs text-muted-foreground">{lead.vehicle}{lead.stockNo && ` · ${lead.stockNo}`}</span>
-      {lead.nextAppointment && <span className="flex items-center gap-1.5 text-xs font-medium text-foreground">
-        <CalendarClock aria-hidden className="size-3.5 shrink-0 text-primary" /><span className="sr-only">{copy.nextAppointment}: </span>{lead.nextAppointment}
+      <span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+        <CarFront aria-hidden className="size-3.5 shrink-0" />
+        <span className="min-w-0 truncate"><span className="font-medium text-foreground/80">{lead.vehicle}</span>{lead.stockNo && <span className="font-mono"> · {lead.stockNo}</span>}</span>
+      </span>
+      {lead.nextAppointment && <span className="flex items-center gap-1.5 rounded-lg bg-brand-soft px-2 py-1.5 text-xs font-medium text-foreground">
+        <CalendarClock aria-hidden className="size-3.5 shrink-0 text-primary" /><span className="sr-only">{copy.nextAppointment}: </span><span className="min-w-0 truncate">{lead.nextAppointment}</span>
       </span>}
-      <span className="flex items-center justify-between gap-2">
+      <span className="flex items-center justify-between gap-2 border-t pt-3">
         {lead.source ? <StatusPill option={lead.source} className="max-w-[60%]" /> : <span />}
-        {lead.assignee ? <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"><Avatar name={lead.assignee} size="sm" /><span className="truncate">{lead.assignee.split(/\s+/)[0]}</span></span>
-          : <span className="text-xs font-medium text-warning">{copy.noAssignee}</span>}
+        {lead.assignee ? <span className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground"><Avatar name={lead.assignee} size="sm" /><span className="truncate">{lead.assignee.split(/\s+/)[0]}</span></span>
+          : <span className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground"><span aria-hidden className="size-2 rounded-full bg-warning" />{copy.noAssignee}</span>}
       </span>
     </div>}>
     <StageOptions lead={ref} settings={settings} pending={pending}

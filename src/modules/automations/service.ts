@@ -4,7 +4,9 @@ import { connectDb } from "@/lib/db";
 import { escapeRegex } from "@/lib/regex";
 import { keySchema, objectIdSchema } from "@/lib/data-schema";
 import { requireRole } from "@/modules/auth/service";
-import { ConsoleProvider, getEmailProvider, isLoggedProvider, sendAndLog, type EmailMessage, type EmailProvider, type EmailRefs } from "@/lib/email/provider";
+import { brandEmail } from "@/lib/email/layout";
+import { getSettings } from "@/modules/settings/service";
+import { ConsoleProvider, SmtpProvider, getEmailProvider, isLoggedProvider, sendAndLog, type EmailMessage, type EmailProvider, type EmailRefs } from "@/lib/email/provider";
 import { AutomationRunModel, EmailLogModel } from "./model";
 import { automationRunInputSchema, automationRunSchema, emailLogFilterSchema, emailLogInputSchema, emailLogSchema, type AutomationRecipeKey, type AutomationRun, type EmailLogEntry } from "./schema";
 
@@ -41,8 +43,13 @@ export async function recordEmail(input: unknown) {
  * Providers from `getEmailProvider()` log their own sends; any other provider (e.g. a check script's) is wrapped here.
  */
 export async function sendLoggedEmail(message: EmailMessage, refs: EmailRefs = {}, provider: EmailProvider = getEmailProvider()) {
-  if (isLoggedProvider(provider)) return provider.send(message, refs);
-  return sendAndLog(message, refs, provider instanceof ConsoleProvider ? "console" : "resend", (value) => provider.send(value));
+  // Every email leaves in the branded layout, so the inbox and the Email log show the same designed message.
+  // The dealership's name is the sender's display name; replies can be routed to EMAIL_REPLY_TO.
+  const { brand } = await getSettings();
+  const replyTo = process.env.EMAIL_REPLY_TO?.trim() || undefined;
+  const branded = { fromName: brand.companyName, ...(replyTo ? { replyTo } : {}), ...message, html: brandEmail(message.html, { brand, subject: message.subject }) };
+  if (isLoggedProvider(provider)) return provider.send(branded, refs);
+  return sendAndLog(branded, refs, provider instanceof ConsoleProvider ? "console" : provider instanceof SmtpProvider ? "smtp" : "resend", (value) => provider.send(value));
 }
 
 type RunInput = z.input<typeof automationRunInputSchema>;

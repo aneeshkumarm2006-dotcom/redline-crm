@@ -41,11 +41,11 @@ export function ControlSheet({ title, description, trigger, primaryColor, open, 
 }) {
   return <Sheet open={open} onOpenChange={(value) => { if (!pending) setOpen(value); }}>
     <SheetTrigger asChild>{trigger}</SheetTrigger>
-    <SheetContent side="bottom" showCloseButton={false} style={brandTheme(primaryColor)} className="max-h-[85dvh] overflow-y-auto rounded-t-2xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:mx-auto sm:max-w-lg">
-      <SheetHeader className="p-0 pr-16"><SheetTitle>{title}</SheetTitle><SheetDescription>{description}</SheetDescription></SheetHeader>
+    <SheetContent side="bottom" showCloseButton={false} style={brandTheme(primaryColor)} className="max-h-[85dvh] gap-5 overflow-y-auto rounded-t-[1.25rem] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:mx-auto sm:max-w-lg sm:p-6">
+      <SheetHeader className="p-0 pr-16"><SheetTitle className="text-lg font-semibold tracking-tight">{title}</SheetTitle><SheetDescription>{description}</SheetDescription></SheetHeader>
       <SheetClose asChild><Button variant="ghost" disabled={pending} className="absolute right-2 top-2 min-h-11 min-w-11">{copy.close}</Button></SheetClose>
       {children}
-      {pending && <p role="status" className="text-sm">{copy.saving}</p>}
+      {pending && <p role="status" className="text-sm text-muted-foreground">{copy.saving}</p>}
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     </SheetContent>
   </Sheet>;
@@ -56,9 +56,9 @@ export function StageOptions({ lead, settings, pending, onChoose }: {
   lead: LeadRef; settings: Pick<Settings, "leadStages" | "vehicleStatuses">; pending: boolean; onChoose: (stage: string) => void;
 }) {
   const stages = [...settings.leadStages].sort((a, b) => a.order - b.order);
-  return <div className="grid gap-2">{stages.map((stage) => <Button key={stage.key} variant="outline" className="min-h-14 justify-between whitespace-normal text-left"
+  return <div className="grid gap-2">{stages.map((stage) => <Button key={stage.key} variant="outline" className="min-h-14 justify-between whitespace-normal rounded-xl bg-card px-4 text-left shadow-xs"
     disabled={pending || stage.key === lead.stage} onClick={() => onChoose(stage.key)}>
-    <StatusBadgeView kind="lead" status={stage.key} settings={settings} />{stage.key === lead.stage && <span className="text-xs text-muted-foreground">{copy.current}</span>}
+    <StatusBadgeView kind="lead" status={stage.key} settings={settings} />{stage.key === lead.stage && <span className="eyebrow">{copy.current}</span>}
   </Button>)}</div>;
 }
 
@@ -84,9 +84,9 @@ export function ReassignControl({ lead, salespeople, primaryColor, label = copy.
     open={open} setOpen={(value) => { setOpen(value); setError(""); }} pending={pending} error={error}
     trigger={<Button variant="outline" className="min-h-11" aria-label={`${label}: ${lead.name}`}>{label}</Button>}>
     {!salespeople.length ? <p className="text-sm text-muted-foreground">{copy.noSalespeople}</p> : <div className="grid gap-2">{salespeople.map((person) =>
-      <Button key={person.id} variant="outline" className="min-h-14 justify-between whitespace-normal text-left" disabled={pending || person.id === lead.assignedTo}
+      <Button key={person.id} variant="outline" className="min-h-14 justify-between whitespace-normal rounded-xl bg-card px-4 text-left shadow-xs" disabled={pending || person.id === lead.assignedTo}
         onClick={() => run(() => reassignLeadAction({ id: lead.id, from: lead.assignedTo, salespersonId: person.id }), copy.assigneeSaved, () => setOpen(false))}>
-        <span className="font-medium">{person.name}</span>{person.id === lead.assignedTo && <span className="text-xs text-muted-foreground">{copy.current}</span>}
+        <span className="font-medium">{person.name}</span>{person.id === lead.assignedTo && <span className="eyebrow">{copy.current}</span>}
       </Button>)}</div>}
   </ControlSheet>;
 }
@@ -104,7 +104,7 @@ export function LogCallControl({ lead, nextStage, primaryColor, compact = false 
   const { pending, error, setError, run } = useLeadAction();
   return <ControlSheet title={copy.logCall} description={`${lead.name} · ${copy.logCallHint}`} primaryColor={primaryColor}
     open={open} setOpen={(value) => { setOpen(value); setError(""); }} pending={pending} error={error}
-    trigger={<Button variant="outline" className={compact ? "min-h-11" : "min-h-12 justify-start gap-3"} aria-label={`${copy.logCall}: ${lead.name}`}>
+    trigger={<Button variant="outline" className={compact ? "min-h-11" : "min-h-12 justify-start gap-3 rounded-xl bg-card shadow-xs"} aria-label={`${copy.logCall}: ${lead.name}`}>
       <PhoneCall aria-hidden className="size-5" />{copy.logCall}
     </Button>}>
     <form className="space-y-4" onSubmit={(event) => {
@@ -113,9 +113,9 @@ export function LogCallControl({ lead, nextStage, primaryColor, compact = false 
     }}>
       <label className="block space-y-2"><span className="text-sm font-medium">{copy.callNote}</span>
         <textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={2000} rows={3} disabled={pending}
-          placeholder={copy.callNotePlaceholder} className="w-full rounded-md border bg-background px-3 py-2 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+          placeholder={copy.callNotePlaceholder} className="w-full rounded-lg border border-input bg-card px-3 py-2.5 text-base shadow-xs outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-muted-foreground hover:border-foreground/25 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50" />
       </label>
-      {nextStage && <label className="flex min-h-11 items-center gap-3 text-sm">
+      {nextStage && <label className="flex min-h-12 items-center gap-3 rounded-xl bg-muted px-3.5 text-sm font-medium">
         <input type="checkbox" checked={advance} onChange={(event) => setAdvance(event.target.checked)} disabled={pending} className="size-5 accent-primary" />
         {copy.advanceStage(nextStage.label)}
       </label>}
@@ -133,7 +133,7 @@ export function NoteForm({ leadId }: { leadId: string }) {
   }}>
     <label className="block space-y-2"><span className="text-sm font-medium">{copy.addNote}</span>
       <textarea name="message" value={message} onChange={(event) => setMessage(event.target.value)} required maxLength={2000} rows={3} disabled={pending}
-        placeholder={copy.notePlaceholder} className="w-full rounded-md border bg-background px-3 py-2 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+        placeholder={copy.notePlaceholder} className="w-full rounded-lg border border-input bg-card px-3 py-2.5 text-base shadow-xs outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-muted-foreground hover:border-foreground/25 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50" />
     </label>
     <Button type="submit" className="min-h-11 w-full sm:w-auto" disabled={pending || !message.trim()}>{pending ? copy.saving : copy.saveNote}</Button>
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}

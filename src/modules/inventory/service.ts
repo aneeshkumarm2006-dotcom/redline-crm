@@ -62,16 +62,37 @@ async function publicQuery() {
     dealershipId: { $in: dealerships.map((dealership) => dealership.id) },
   };
 }
+const publicSortOrder = {
+  newest: { dateInStock: -1, _id: 1 }, price_asc: { price: 1, _id: 1 }, price_desc: { price: -1, _id: 1 }, mileage_asc: { mileage: 1, _id: 1 },
+} as const;
 export async function listPublicVehicles(input: unknown = {}) {
   const filters = publicInventoryFilterSchema.parse(input);
-  const query = await publicQuery();
-  if (filters.dealershipId) query.dealershipId.$in = query.dealershipId.$in.filter((id) => id === filters.dealershipId);
+  const base = await publicQuery();
+  if (filters.dealershipId) base.dealershipId.$in = base.dealershipId.$in.filter((id) => id === filters.dealershipId);
+  const keyword = filters.q ? new RegExp(escapeRegex(filters.q), "i") : null;
+  const query = {
+    ...base,
+    ...(keyword ? { $or: [{ make: keyword }, { model: keyword }, { trim: keyword }, { stockNo: keyword }] } : {}),
+    ...(filters.make ? { make: new RegExp(`^${escapeRegex(filters.make)}$`, "i") } : {}),
+    ...(filters.maxPrice ? { price: { $lte: filters.maxPrice } } : {}),
+  };
   const total = await VehicleModel.countDocuments(query).exec();
   const pageCount = Math.max(1, Math.ceil(total / 24));
   const page = Math.min(filters.page, pageCount);
-  const documents = await VehicleModel.find(query).select(listingFields).sort({ dateInStock: -1, _id: 1 }).skip((page - 1) * 24).limit(24).lean().exec();
+  const documents = await VehicleModel.find(query).select(listingFields).sort(publicSortOrder[filters.sort]).skip((page - 1) * 24).limit(24).lean().exec();
   const now = Date.now();
   return { vehicles: documents.map((document) => toPublicListing(document, now)), total, page, pageCount };
+}
+/** Makes (with counts) and the price range across everything listed publicly, for the showroom search bar. */
+export async function getPublicFacets() {
+  const query = await publicQuery();
+  await connectDb();
+  const match = { status: query.status, dealershipId: { $in: query.dealershipId.$in.map((id) => new VehicleModel.base.Types.ObjectId(id)) } };
+  const [makes, range] = await Promise.all([
+    VehicleModel.aggregate<{ _id: string; count: number }>([{ $match: match }, { $group: { _id: "$make", count: { $sum: 1 } } }, { $sort: { _id: 1 } }]).exec(),
+    VehicleModel.aggregate<{ min: number; max: number }>([{ $match: match }, { $group: { _id: null, min: { $min: "$price" }, max: { $max: "$price" } } }]).exec(),
+  ]);
+  return { makes: makes.map((row) => ({ make: row._id, count: row.count })), minPrice: range[0]?.min ?? null, maxPrice: range[0]?.max ?? null };
 }
 /** Publicly visible vehicles per public location, for the location chips. */
 export async function countPublicVehiclesByDealership() {

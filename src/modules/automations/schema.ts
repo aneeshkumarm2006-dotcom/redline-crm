@@ -10,7 +10,7 @@ export const automationRecipeKeys = [
   "vehicle_status_alert", "vehicle_price_alert", "repair_alert", "sale_recorded",
   // Scheduled reminders
   "aging_inventory_reminder", "repair_overdue_reminder", "uncontacted_lead_reminder",
-  "appointment_customer_reminder", "appointment_morning_alert",
+  "appointment_customer_reminder", "appointment_morning_alert", "lead_customer_follow_up",
 ] as const;
 export type AutomationRecipeKey = (typeof automationRecipeKeys)[number];
 export const isAutomationRecipeKey = (key: string): key is AutomationRecipeKey => (automationRecipeKeys as readonly string[]).includes(key);
@@ -27,6 +27,7 @@ export const recipeCatalog: { key: AutomationRecipeKey; group: RecipeGroup; trig
   { key: "appointment_confirmation", group: "leads", trigger: "event" },
   { key: "appointment_alert", group: "leads", trigger: "event" },
   { key: "appointment_stage_update", group: "leads", trigger: "event" },
+  { key: "lead_customer_follow_up", group: "leads", trigger: "schedule" },
   { key: "vehicle_status_alert", group: "inventory", trigger: "event" },
   { key: "vehicle_price_alert", group: "inventory", trigger: "event" },
   { key: "repair_alert", group: "inventory", trigger: "event" },
@@ -60,7 +61,7 @@ export const automationRunInputSchema = z.object({
 export const automationRunSchema = automationRunInputSchema.extend({ id: objectIdSchema });
 export type AutomationRun = z.infer<typeof automationRunSchema>;
 
-export const emailProviders = ["console", "resend"] as const;
+export const emailProviders = ["console", "resend", "smtp"] as const;
 export const emailLogInputSchema = z.object({
   to: z.array(emailSchema).min(1).max(50),
   subject: z.string().trim().min(1).max(300).refine((value) => !/[\r\n]/.test(value), "Use a single line."),

@@ -29,18 +29,19 @@ export function SidebarNavigation({ role }: { role: Role }) {
     const Icon = sectionIcons[key];
     return <li key={key}>
       <Link href={shellCopy.sections[key].href} aria-current={active ? "page" : undefined}
-        className={cn("relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-ring",
-          active ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground")}>
-        {active && <span aria-hidden className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-sidebar-primary" />}
-        <Icon aria-hidden className={cn("size-[1.125rem] shrink-0", active && "text-sidebar-primary")} />
+        className={cn("group flex min-h-10 items-center gap-3 rounded-xl px-2 text-sm font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-ring",
+          active ? "bg-white/[0.08] text-sidebar-accent-foreground shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06)]" : "text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground")}>
+        <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors", active ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-muted group-hover:text-sidebar-foreground")}>
+          <Icon aria-hidden className="size-4" />
+        </span>
         <span className="truncate">{shellCopy.sections[key].label}</span>
       </Link>
     </li>;
   };
-  return <nav aria-label={shellCopy.navigation} className="space-y-6">
+  return <nav aria-label={shellCopy.navigation} className="space-y-7">
     <ul className="space-y-1">{primary.map(link)}</ul>
     {more.length > 0 && <div>
-      <p className="mb-2 px-3 text-[0.6875rem] font-semibold tracking-wider text-sidebar-muted uppercase">{shellCopy.more}</p>
+      <p className="mb-2 px-2 text-[0.6875rem] font-semibold tracking-[0.08em] text-sidebar-muted/80 uppercase">{shellCopy.more}</p>
       <ul className="space-y-1">{more.map(link)}</ul>
     </div>}
   </nav>;

@@ -15,7 +15,7 @@ export function luminance(hex: string) {
 
 /** Black or white text, whichever reads better on the given fill. */
 export function readableForeground(hex: string) {
-  return luminance(hex) > 0.179 ? "#000000" : "#ffffff";
+  return luminance(hex) > 0.179 ? "#0B1220" : "#ffffff";
 }
 
 /** The colour with an alpha channel, for soft tints of settings colours. */
@@ -25,7 +25,7 @@ export function withAlpha(hex: string, alpha: number) {
 }
 
 // Mid-tone hues that all carry white initials at 4.5:1 or better.
-const avatarPalette = ["#2563EB", "#7C3AED", "#C026D3", "#DB2777", "#DC2626", "#C2410C", "#A16207", "#15803D", "#0F766E", "#0369A1", "#4F46E5", "#475569"];
+const avatarPalette = ["#2F5BEA", "#7C5CFC", "#D9487E", "#C2410C", "#0B875E", "#14A38B", "#1E40C0", "#6D4AE8", "#B4234A", "#0E7490", "#4B5568", "#9A3412"];
 
 /** A stable colour derived from a name, so the same person always looks the same. */
 export function colorFromName(name: string) {

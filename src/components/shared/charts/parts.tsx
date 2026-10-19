@@ -6,9 +6,9 @@ export const seriesColor = (series: ChartSeries, index: number) => series.color 
 
 /** Card frame shared by every chart: title, optional description and action, then the plot. */
 export function ChartCard({ title, description, action, children, className }: { title: string; description?: string; action?: React.ReactNode; children: React.ReactNode; className?: string }) {
-  return <section className={cn("min-w-0 rounded-xl border bg-card p-4 shadow-xs", className)}>
-    <header className="mb-3 flex items-start justify-between gap-3">
-      <div className="min-w-0"><h2 className="text-sm font-semibold">{title}</h2>{description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}</div>
+  return <section className={cn("min-w-0 rounded-2xl border bg-card p-5 shadow-xs sm:p-6", className)}>
+    <header className="mb-5 flex items-start justify-between gap-3">
+      <div className="min-w-0"><h2 className="text-[0.9375rem] font-semibold tracking-tight">{title}</h2>{description && <p className="mt-1 text-[0.8125rem] text-muted-foreground">{description}</p>}</div>
       {action}
     </header>
     {children}

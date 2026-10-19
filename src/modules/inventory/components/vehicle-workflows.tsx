@@ -3,6 +3,7 @@ import { useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { DropdownField } from "@/components/ui/dropdown-field";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose, SheetTrigger } from "@/components/ui/sheet";
 import { brandTheme } from "@/components/shared/app-shell/theme";
@@ -12,7 +13,7 @@ import { inventoryCopy as copy, formatPrice } from "../copy";
 
 type VehicleRef = { id: string; revision: number; stockNo: string; title: string };
 type ActionResult = { ok: true; warning?: string } | { ok: false; message: string };
-const controls = "min-h-11 w-full min-w-0 rounded-md border bg-background px-3 py-2 text-base";
+const controls = "min-h-11 w-full min-w-0 rounded-lg border border-input bg-card px-3 py-2 text-base shadow-xs outline-none transition-[border-color,box-shadow] duration-150 hover:border-foreground/25 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 md:text-sm";
 
 /** Open state, pending/error handling and URL cleanup shared by the workflow sheets. */
 function useWorkflow(defaultOpen: boolean) {
@@ -48,12 +49,12 @@ function WorkflowSheet({ title, description, trigger, primaryColor, state, child
 }) {
   return <Sheet open={state.open} onOpenChange={state.change}>
     <SheetTrigger asChild>{trigger}</SheetTrigger>
-    <SheetContent side="bottom" showCloseButton={false} style={brandTheme(primaryColor)} className="max-h-[90dvh] overflow-y-auto rounded-t-2xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:mx-auto sm:max-w-lg">
-      <SheetHeader className="p-0 pr-16"><SheetTitle>{title}</SheetTitle><SheetDescription>{description}</SheetDescription></SheetHeader>
-      <SheetClose asChild><Button variant="ghost" disabled={state.pending} className="absolute right-2 top-2 min-h-11 min-w-11">{copy.close}</Button></SheetClose>
+    <SheetContent side="bottom" showCloseButton={false} style={brandTheme(primaryColor)} className="max-h-[90dvh] gap-5 overflow-y-auto rounded-t-[1.25rem] bg-card p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-lg sm:mx-auto sm:max-w-lg sm:p-6">
+      <SheetHeader className="gap-1 p-0 pr-16"><SheetTitle className="font-display text-xl tracking-tight">{title}</SheetTitle><SheetDescription>{description}</SheetDescription></SheetHeader>
+      <SheetClose asChild><Button variant="ghost" disabled={state.pending} className="absolute right-3 top-3 min-h-11 min-w-11">{copy.close}</Button></SheetClose>
       {children}
-      {state.pending && <p role="status" className="text-sm">{copy.saving}</p>}
-      {state.error && <p role="alert" className="text-sm text-destructive">{state.error}</p>}
+      {state.pending && <p role="status" className="text-sm text-muted-foreground">{copy.saving}</p>}
+      {state.error && <p role="alert" className="rounded-lg bg-danger/8 px-3 py-2 text-sm text-destructive">{state.error}</p>}
     </SheetContent>
   </Sheet>;
 }
@@ -77,19 +78,16 @@ export function SendToRepairSheet({ vehicle, repairTypes, garages, primaryColor,
     }}>
       <fieldset disabled={state.pending} className="space-y-4">
         <label className="block space-y-2"><span className="text-sm font-medium">{copy.workflowFields.repairType}</span>
-          <select name="typeKey" required value={typeKey} onChange={(event) => setTypeKey(event.target.value)} className={controls}>
-            <option value="" disabled>{copy.chooseOne}</option>{repairTypes.map((type) => <option key={type.key} value={type.key}>{type.label}</option>)}
-          </select></label>
+          <DropdownField name="typeKey" required value={typeKey} onValueChange={setTypeKey} placeholder={copy.chooseOne}
+            options={repairTypes.map((type) => ({ value: type.key, label: type.label }))} /></label>
         <label className="block space-y-2"><span className="text-sm font-medium">{copy.workflowFields.garage}</span>
-          <select name="garageId" required defaultValue="" className={controls}>
-            <option value="" disabled>{copy.chooseOne}</option>
-            {ordered.map((garage) => <option key={garage.id} value={garage.id}>{garage.name}{typeKey && garage.specialties.includes(typeKey) ? ` (${copy.specialist})` : ""}</option>)}
-          </select></label>
+          <DropdownField name="garageId" required defaultValue="" placeholder={copy.chooseOne}
+            options={ordered.map((garage) => ({ value: garage.id, label: `${garage.name}${typeKey && garage.specialties.includes(typeKey) ? ` (${copy.specialist})` : ""}` }))} /></label>
         <label className="block space-y-2"><span className="text-sm font-medium">{copy.workflowFields.estimatedCost}</span>
-          <Input name="estimatedCost" type="number" inputMode="decimal" min="0" max="100000000" step="0.01" className="min-h-11 text-base" /></label>
+          <Input name="estimatedCost" type="number" inputMode="decimal" min="0" max="100000000" step="0.01" className="min-h-11 text-base tabular-nums md:text-sm" /></label>
         <label className="block space-y-2"><span className="text-sm font-medium">{copy.workflowFields.notes}</span>
           <textarea name="notes" rows={3} maxLength={2000} className={controls} /></label>
-        <Button type="submit" className="min-h-11 w-full">{state.pending ? copy.saving : copy.sendToRepair}</Button>
+        <Button type="submit" className="mt-1 min-h-12 w-full">{state.pending ? copy.saving : copy.sendToRepair}</Button>
       </fieldset>
     </form>
   </WorkflowSheet>;
@@ -108,8 +106,8 @@ export function CompleteRepairSheet({ vehicle, estimatedCost, primaryColor, defa
     }}>
       <fieldset disabled={state.pending} className="space-y-4">
         <label className="block space-y-2"><span className="text-sm font-medium">{copy.workflowFields.finalCost}</span>
-          <Input name="cost" type="number" inputMode="decimal" min="0" max="100000000" step="0.01" required defaultValue={estimatedCost ?? ""} className="min-h-11 text-base" /></label>
-        <Button type="submit" className="min-h-11 w-full">{state.pending ? copy.saving : copy.completeRepair}</Button>
+          <Input name="cost" type="number" inputMode="decimal" min="0" max="100000000" step="0.01" required defaultValue={estimatedCost ?? ""} className="min-h-11 text-base tabular-nums md:text-sm" /></label>
+        <Button type="submit" className="mt-1 min-h-12 w-full">{state.pending ? copy.saving : copy.completeRepair}</Button>
       </fieldset>
     </form>
   </WorkflowSheet>;
@@ -123,7 +121,7 @@ export function MarkSoldSheet({ vehicle, price, commission, salespeople, leads, 
   const [salespersonId, setSalespersonId] = useState("");
   return <WorkflowSheet title={copy.markSold} description={`${vehicle.title} · ${vehicle.stockNo}. ${copy.markSoldHint}`} primaryColor={primaryColor} state={state}
     trigger={<Button variant="outline" className="min-h-11">{copy.markSold}</Button>}>
-    {!salespeople.length ? <p className="text-sm text-muted-foreground">{copy.noSalespeople}</p> : <form className="space-y-4" onSubmit={(event) => {
+    {!salespeople.length ? <p className="rounded-xl border border-dashed px-4 py-3 text-sm text-muted-foreground">{copy.noSalespeople}</p> : <form className="space-y-4" onSubmit={(event) => {
       event.preventDefault();
       const form = new FormData(event.currentTarget);
       state.run(() => markSoldAction({ id: vehicle.id, revision: vehicle.revision, salespersonId, leadId: String(form.get("leadId") ?? "") || null,
@@ -132,21 +130,17 @@ export function MarkSoldSheet({ vehicle, price, commission, salespeople, leads, 
       <fieldset disabled={state.pending} className="space-y-4">
         {leads.length > 0 && <label className="block space-y-2"><span className="text-sm font-medium">{copy.workflowFields.lead}</span>
           {/* Picking the customer's lead preselects the salesperson working it. */}
-          <select name="leadId" defaultValue="" className={controls} onChange={(event) => {
-            const assignee = leads.find((lead) => lead.id === event.target.value)?.assignedTo;
+          <DropdownField name="leadId" defaultValue="" onValueChange={(leadId) => {
+            const assignee = leads.find((lead) => lead.id === leadId)?.assignedTo;
             if (assignee && salespeople.some((person) => person.id === assignee)) setSalespersonId(assignee);
-          }}>
-            <option value="">{copy.workflowFields.noLead}</option>
-            {leads.map((lead) => <option key={lead.id} value={lead.id}>{lead.name} · {lead.stageLabel}</option>)}
-          </select></label>}
+          }} options={[{ value: "", label: copy.workflowFields.noLead }, ...leads.map((lead) => ({ value: lead.id, label: `${lead.name} · ${lead.stageLabel}` }))]} /></label>}
         <label className="block space-y-2"><span className="text-sm font-medium">{copy.workflowFields.salesperson}</span>
-          <select name="salespersonId" required value={salespersonId} onChange={(event) => setSalespersonId(event.target.value)} className={controls}>
-            <option value="" disabled>{copy.chooseOne}</option>{salespeople.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
-          </select></label>
+          <DropdownField name="salespersonId" required value={salespersonId} onValueChange={setSalespersonId} placeholder={copy.chooseOne}
+            options={salespeople.map((person) => ({ value: person.id, label: person.name }))} /></label>
         <label className="block space-y-2"><span className="text-sm font-medium">{copy.workflowFields.salePrice}</span>
-          <Input name="price" type="number" inputMode="decimal" min="0" max="100000000" step="0.01" required defaultValue={price} className="min-h-11 text-base" /></label>
-        <p className="rounded-lg bg-muted/60 px-3 py-2 text-sm">{copy.commissionSnapshot(formatPrice(commission))}</p>
-        <Button type="submit" className="min-h-11 w-full">{state.pending ? copy.saving : copy.markSold}</Button>
+          <Input name="price" type="number" inputMode="decimal" min="0" max="100000000" step="0.01" required defaultValue={price} className="min-h-11 text-base tabular-nums md:text-sm" /></label>
+        <p className="rounded-xl bg-muted px-4 py-3 text-sm tabular-nums">{copy.commissionSnapshot(formatPrice(commission))}</p>
+        <Button type="submit" className="mt-1 min-h-12 w-full">{state.pending ? copy.saving : copy.markSold}</Button>
       </fieldset>
     </form>}
   </WorkflowSheet>;

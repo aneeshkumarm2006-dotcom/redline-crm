@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/shared/empty-state";
+import { PageHeader } from "@/components/shared/page-header";
 import { requirePageUser } from "@/modules/auth/page-guards";
 import { getSettings } from "@/modules/settings/service";
 import { listEmailLog } from "../service";
@@ -35,43 +36,45 @@ export async function EmailLogScreen({ searchParams }: { searchParams: Promise<R
     return `/crm/automations/emails${search ? `?${search}` : ""}`;
   };
   return <>
-    <header className="flex flex-wrap items-start justify-between gap-4">
-      <div className="min-w-0"><h1 className="text-3xl font-semibold tracking-tight">{copy.title}</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">{copy.intro}</p></div>
-      <RunNowButton />
-    </header>
-    <AutomationsTabs active="emails" />
-
-    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-      <form role="search" action="/crm/automations/emails" className="flex min-w-0 flex-1 gap-2 md:max-w-md">
-        <label htmlFor="email-search" className="sr-only">{copy.searchLabel}</label>
-        <div className="relative min-w-0 flex-1">
-          <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input id="email-search" name="q" type="search" defaultValue={q} placeholder={copy.search} maxLength={120} className="min-h-11 pl-9" />
+    <PageHeader title={copy.title} description={copy.intro} actions={<RunNowButton />}>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <AutomationsTabs active="emails" />
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
+          <form role="search" action="/crm/automations/emails" className="flex min-w-0 flex-1 gap-2 sm:w-[22rem] sm:flex-none">
+            <label htmlFor="email-search" className="sr-only">{copy.searchLabel}</label>
+            <div className="relative min-w-0 flex-1">
+              <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input id="email-search" name="q" type="search" defaultValue={q} placeholder={copy.search} maxLength={120} className="min-h-11 rounded-lg border-input bg-card pl-9" />
+            </div>
+            {status && <input type="hidden" name="status" value={status} />}
+            <Button type="submit" variant="outline" className="min-h-11">{copy.apply}</Button>
+          </form>
+          <nav aria-label={copy.statusLabel} className="inline-flex gap-1 self-start rounded-xl bg-muted p-1 sm:self-auto">
+            {statuses.map((entry) => {
+              const active = (status ?? "all") === entry;
+              return <Link key={entry} href={href({ status: entry })} aria-current={active ? "page" : undefined} scroll={false}
+                className={cn("inline-flex min-h-9 items-center rounded-lg px-3.5 text-sm font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring pointer-coarse:min-h-11",
+                  active ? "bg-card text-foreground shadow-sm ring-1 ring-border" : "text-muted-foreground hover:text-foreground")}>{copy.statuses[entry]}</Link>;
+            })}
+          </nav>
         </div>
-        {status && <input type="hidden" name="status" value={status} />}
-        <Button type="submit" variant="outline" className="min-h-11">{copy.apply}</Button>
-      </form>
-      <nav aria-label={copy.statusLabel} className="inline-flex self-start rounded-lg border bg-card p-0.5">
-        {statuses.map((entry) => {
-          const active = (status ?? "all") === entry;
-          return <Link key={entry} href={href({ status: entry })} aria-current={active ? "page" : undefined} scroll={false}
-            className={cn("inline-flex min-h-10 items-center rounded-md px-3 text-sm font-medium", active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}>{copy.statuses[entry]}</Link>;
-        })}
-      </nav>
-    </div>
+      </div>
+    </PageHeader>
 
+    <div className="space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-      <p>{copy.total(log.total)}</p>
-      {(q || status) && <Link href="/crm/automations/emails" className="inline-flex min-h-11 items-center font-medium text-foreground hover:underline">{copy.clear}</Link>}
+      <p className="tabular-nums">{copy.total(log.total)}</p>
+      {(q || status) && <Link href="/crm/automations/emails" className="inline-flex min-h-11 items-center font-medium text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring">{copy.clear}</Link>}
     </div>
 
     {!log.emails.length
       ? <EmptyState icon={MailSearch} title={copy.empty} description={copy.emptyHint} />
-      : <EmailList emails={log.emails} timeZone={settings.booking.timeZone} copy={copy.list} leadLinkLabel={copy.openLead} />}
+      : <EmailList emails={log.emails} timeZone={settings.booking.timeZone} brand={settings.brand} copy={copy.list} leadLinkLabel={copy.openLead} />}
+    </div>
 
     {log.pageCount > 1 && <nav aria-label={copy.pagination} className="flex items-center justify-between gap-2">
       {log.page > 1 ? <Button asChild variant="outline" className="min-h-11"><Link href={href({ page: log.page - 1 })}>{copy.previous}</Link></Button> : <span />}
-      <span className="text-sm text-muted-foreground">{copy.page(log.page, log.pageCount)}</span>
+      <span className="text-sm tabular-nums text-muted-foreground">{copy.page(log.page, log.pageCount)}</span>
       {log.page < log.pageCount ? <Button asChild variant="outline" className="min-h-11"><Link href={href({ page: log.page + 1 })}>{copy.next}</Link></Button> : <span />}
     </nav>}
   </>;

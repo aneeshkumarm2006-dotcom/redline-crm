@@ -35,6 +35,7 @@ const settingsModelSchema = new Schema<SettingsDocument>({
   inventoryAging: { type: new Schema({ warnDays: Number, criticalDays: Number }, embedded) },
   repairOverdueDays: Number,
   uncontactedLeadHours: Number,
+  customerFollowUpDays: { type: [Number], default: undefined },
   automations: { type: Map, of: Boolean, default: undefined },
   notificationRules: [new Schema({ event: String, recipients: [String], channels: [String] }, embedded)],
 }, { timestamps: true, strict: "throw", collection: "settings" });

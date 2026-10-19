@@ -67,7 +67,7 @@ export function PipelineDropColumn({ stage, className, style, children, ...rest 
   const [over, setOver] = useState(false);
   const accepts = Boolean(context?.dragged && context.dragged.stage !== stage.key);
   return <section {...rest} style={style}
-    className={cn(className, "transition-colors", accepts && "outline-2 outline-dashed outline-offset-2 outline-border", accepts && over && "bg-primary/10 outline-primary")}
+    className={cn(className, "transition-[background-color,outline-color,box-shadow] duration-150 ease-out", accepts && "outline-2 outline-dashed outline-offset-2 outline-foreground/20", accepts && over && "bg-brand-soft shadow-md outline-primary")}
     onDragOver={(event) => { if (!accepts) return; event.preventDefault(); event.dataTransfer.dropEffect = "move"; if (!over) setOver(true); }}
     onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOver(false); }}
     onDrop={(event) => { event.preventDefault(); setOver(false); if (accepts) context?.drop(stage); }}>

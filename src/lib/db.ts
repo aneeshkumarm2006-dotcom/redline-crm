@@ -3,8 +3,12 @@ import "server-only";
 import mongoose from "mongoose";
 
 type ConnectionCache = { promise: Promise<typeof mongoose> | null };
-const globalDb = globalThis as typeof globalThis & { redlineDb?: ConnectionCache };
-const cache = (globalDb.redlineDb ??= { promise: null });
+// Keyed to this Mongoose instance, not to globalThis: instrumentation (event handlers, the reminder scheduler) and
+// the app can load separate copies of Mongoose in one process, and a shared slot let one copy hand the other an
+// unrelated connection, leaving its own models unconnected. The instance survives development reloads.
+const slot = Symbol.for("redline.db");
+const holder = mongoose as typeof mongoose & { [slot]?: ConnectionCache };
+const cache = (holder[slot] ??= { promise: null });
 
 /** One connection attempt per warm process, including during development reloads. */
 export async function connectDb(): Promise<typeof mongoose> {

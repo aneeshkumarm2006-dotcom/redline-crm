@@ -1,5 +1,6 @@
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { readableForeground } from "@/lib/color";
 import { resolvePill, type PillOption } from "../status-pill";
 import { BoardCell } from "./cells";
 import { BoardCsvButton } from "./csv-button";
@@ -21,7 +22,6 @@ type BoardProps = {
   exportName?: string;
 };
 
-const EDGE = 6;
 const width = (column: BoardColumn) => column.width ?? defaultWidths[column.cell];
 const subjectOf = (item: BoardItem, columns: BoardColumn[]) => {
   const first = item.values[columns[0]?.id ?? ""];
@@ -72,40 +72,45 @@ function GroupSummary({ group, column }: { group: BoardGroup; column: BoardColum
   return null;
 }
 
+/** Group tint for header bands: the status colour washed into the card surface. */
+const tint = (color: string, amount = 8) => `color-mix(in oklab, ${color} ${amount}%, var(--card))`;
+
 function GroupHeading({ group, sticky }: { group: BoardGroup; sticky: boolean }) {
   return <summary aria-label={copy.toggleGroup(group.title)}
-    className={cn("flex min-h-11 w-max max-w-full cursor-pointer list-none items-center gap-2 rounded-lg pr-3 text-base font-semibold focus-visible:outline-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden", sticky && "sticky left-0 z-30")}>
-    <ChevronDown aria-hidden className="size-4 shrink-0 -rotate-90 transition-transform group-open/group:rotate-0" style={{ color: group.color }} />
-    <span className="truncate" style={{ color: group.color }}>{group.title}</span>
-    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">{copy.items(group.items.length)}</span>
+    className="flex min-h-12 cursor-pointer list-none items-center px-3 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden"
+    style={{ backgroundColor: tint(group.color) }}>
+    <span className={cn("flex min-w-0 items-center gap-2.5", sticky && "sticky left-3")}>
+      <ChevronDown aria-hidden className="size-4 shrink-0 -rotate-90 text-muted-foreground transition-transform duration-200 group-open/group:rotate-0" />
+      <span className="inline-flex min-h-7 items-center truncate rounded-full px-3 text-xs font-semibold" style={{ backgroundColor: group.color, color: readableForeground(group.color) }}>{group.title}</span>
+      <span className="text-xs font-medium tabular-nums text-muted-foreground">{copy.items(group.items.length)}</span>
+    </span>
   </summary>;
 }
 
 function DesktopGroup({ group, columns, actions }: { group: BoardGroup; columns: BoardColumn[]; actions: BoardActions }) {
-  const tableWidth = EDGE + columns.reduce((sum, column) => sum + width(column), 0);
+  const tableWidth = columns.reduce((sum, column) => sum + width(column), 0);
   const hasSummary = columns.some((column) => moneySummary(column) || numberSummary(column) || statusSummary(column));
-  const edge = { backgroundColor: group.color };
   const [first, ...rest] = columns;
-  return <details open={!group.collapsed} className="group/group">
+  // overflow-clip keeps the rounded panel without becoming a scroll container, so sticky cells still work.
+  // A fixed min-width (not w-max) keeps the table's 100% width definite; w-max made the two sizes depend on each other.
+  return <details open={!group.collapsed} className="group/group overflow-clip rounded-2xl border bg-card shadow-xs" style={{ minWidth: tableWidth + 2 }}>
     <GroupHeading group={group} sticky />
-    <table className="mt-1 table-fixed border-separate border-spacing-0 text-sm" style={{ width: tableWidth }}>
+    <table className="table-fixed border-separate border-spacing-0 text-sm" style={{ width: "100%", minWidth: tableWidth }}>
       <caption className="sr-only">{group.title}</caption>
-      <colgroup><col style={{ width: EDGE }} />{columns.map((column) => <col key={column.id} style={{ width: width(column) }} />)}</colgroup>
+      <colgroup>{columns.map((column) => <col key={column.id} style={{ width: width(column) }} />)}</colgroup>
       <thead>
         <tr>
-          <th aria-hidden className="sticky top-0 left-0 z-30 rounded-tl-lg p-0" style={edge} />
-          <th scope="col" style={{ left: EDGE }} className={cn("sticky top-0 z-30 border-y border-r bg-card px-3 py-2 text-xs font-medium text-muted-foreground", alignClass(first.align, first.cell))}>{first.header}</th>
-          {rest.map((column) => <th key={column.id} scope="col" className={cn("sticky top-0 z-20 border-y border-r bg-card px-3 py-2 text-xs font-medium text-muted-foreground last:rounded-tr-lg", column.cell === "status" || column.cell === "label" ? "text-center" : alignClass(column.align, column.cell))}>{column.header}</th>)}
+          <th scope="col" className={cn("sticky top-0 left-0 z-30 border-y bg-card px-4 py-2.5 text-[0.6875rem] font-semibold tracking-[0.06em] text-muted-foreground uppercase", alignClass(first.align, first.cell))}>{first.header}</th>
+          {rest.map((column) => <th key={column.id} scope="col" className={cn("sticky top-0 z-20 border-y border-l border-l-border/60 bg-card px-3 py-2.5 text-[0.6875rem] font-semibold tracking-[0.06em] text-muted-foreground uppercase", column.cell === "status" || column.cell === "label" ? "text-center" : alignClass(column.align, column.cell))}>{column.header}</th>)}
         </tr>
       </thead>
       <tbody>
-        {group.items.length === 0 && <tr><td aria-hidden className="sticky left-0 z-10 p-0" style={edge} /><td colSpan={columns.length} className="border-r border-b bg-card px-3 py-3 text-muted-foreground">{copy.emptyGroup}</td></tr>}
+        {group.items.length === 0 && <tr><td colSpan={columns.length} className="border-b bg-card px-4 py-4 text-muted-foreground">{copy.emptyGroup}</td></tr>}
         {group.items.map((item) => {
           const subject = subjectOf(item, columns);
           return <tr key={item.id} className="group/row">
-            <td aria-hidden className="sticky left-0 z-10 p-0" style={edge} />
-            <th scope="row" style={{ left: EDGE }} className="sticky z-10 border-r border-b bg-card p-0 text-left font-normal group-hover/row:bg-muted"><BoardCell column={first} item={item} subject={subject} actions={actions} /></th>
-            {rest.map((column) => <td key={column.id} className={cn("border-r border-b bg-card p-0 group-hover/row:bg-muted/60", (column.cell === "status" || column.cell === "label") && "p-px")}>
+            <th scope="row" className="sticky left-0 z-10 border-b bg-card p-0 pl-1 text-left font-normal transition-colors group-hover/row:bg-muted"><BoardCell column={first} item={item} subject={subject} actions={actions} /></th>
+            {rest.map((column) => <td key={column.id} className={cn("border-b border-l border-l-border/60 bg-card p-0 transition-colors group-hover/row:bg-muted/60", (column.cell === "status" || column.cell === "label") && "p-px")}>
               <BoardCell column={column} item={item} subject={subject} actions={actions} />
             </td>)}
           </tr>;
@@ -113,9 +118,8 @@ function DesktopGroup({ group, columns, actions }: { group: BoardGroup; columns:
       </tbody>
       {hasSummary && <tfoot>
         <tr>
-          <td aria-hidden className="p-0" />
-          <th scope="row" style={{ left: EDGE }} className="sticky z-10 rounded-bl-lg border-r border-b border-l bg-muted px-3 py-2 text-left text-xs font-medium text-muted-foreground">{copy.total} · {copy.items(group.items.length)}</th>
-          {rest.map((column) => <td key={column.id} className={cn("border-r border-b bg-muted px-3 py-2 last:rounded-br-lg", alignClass(column.align, column.cell))}><GroupSummary group={group} column={column} /></td>)}
+          <th scope="row" className="sticky left-0 z-10 bg-muted/70 px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground backdrop-blur">{copy.total} · {copy.items(group.items.length)}</th>
+          {rest.map((column) => <td key={column.id} className={cn("border-l border-l-border/60 bg-muted/70 px-3 py-2.5", alignClass(column.align, column.cell))}><GroupSummary group={group} column={column} /></td>)}
         </tr>
       </tfoot>}
     </table>
@@ -126,26 +130,26 @@ function MobileGroup({ group, columns, actions }: { group: BoardGroup; columns: 
   const [first, ...rest] = columns;
   const fields = rest.filter((column) => !column.hideOnMobile);
   const summaries = columns.filter((column) => moneySummary(column) || numberSummary(column) || statusSummary(column));
-  return <details open={!group.collapsed} className="group/group space-y-2">
+  return <details open={!group.collapsed} className="group/group overflow-clip rounded-2xl border bg-card shadow-xs">
     <GroupHeading group={group} sticky={false} />
-    {group.items.length === 0 && <p className="rounded-xl border border-dashed bg-card p-4 text-sm text-muted-foreground">{copy.emptyGroup}</p>}
-    <ul className="space-y-2">
+    {group.items.length === 0 && <p className="border-t p-4 text-sm text-muted-foreground">{copy.emptyGroup}</p>}
+    <ul className="divide-y border-t">
       {group.items.map((item) => {
         const subject = subjectOf(item, columns);
         // Cards skip empty fields (e.g. repair columns on a car that is not in repair) to stay short on a phone.
         const shown = fields.filter((column) => column.cell === "status" || (item.values[column.id] ?? null) !== null);
-        return <li key={item.id} className="overflow-hidden rounded-xl border border-l-[6px] bg-card shadow-xs" style={{ borderLeftColor: group.color }}>
-          <div className="p-3"><BoardCell column={first} item={item} subject={subject} actions={actions} card /></div>
-          {shown.length > 0 && <dl className="grid grid-cols-2 gap-x-3 gap-y-3 border-t px-3 py-3">
+        return <li key={item.id}>
+          <div className="px-4 pt-3.5 pb-2"><BoardCell column={first} item={item} subject={subject} actions={actions} card /></div>
+          {shown.length > 0 && <dl className="grid grid-cols-2 gap-x-4 gap-y-3 px-4 pt-1 pb-4">
             {shown.map((column) => <div key={column.id} className={cn("min-w-0", column.cell === "progress" && "col-span-2")}>
-              <dt className="mb-1 truncate text-xs text-muted-foreground">{column.header}</dt>
+              <dt className="mb-1 truncate text-[0.6875rem] font-semibold tracking-[0.06em] text-muted-foreground uppercase">{column.header}</dt>
               <dd className="min-w-0 text-sm"><BoardCell column={column} item={item} subject={subject} actions={actions} card /></dd>
             </div>)}
           </dl>}
         </li>;
       })}
     </ul>
-    {group.items.length > 0 && summaries.length > 0 && <dl className="grid grid-cols-2 gap-3 rounded-xl border bg-surface-raised p-3 text-xs">
+    {group.items.length > 0 && summaries.length > 0 && <dl className="grid grid-cols-2 gap-3 border-t bg-muted/60 p-4 text-xs">
       <div><dt className="text-muted-foreground">{copy.total}</dt><dd className="mt-1 font-semibold tabular-nums">{copy.items(group.items.length)}</dd></div>
       {summaries.map((column) => <div key={column.id} className={cn("min-w-0", column.cell === "status" && "col-span-2")}>
         <dt className="mb-1 truncate text-muted-foreground">{column.header}</dt><dd><GroupSummary group={group} column={column} /></dd>
@@ -164,10 +168,10 @@ export function Board({ label, columns, groups, onStatusChange, onMoneyChange, h
   if (!columns.length) return null;
   return <section aria-label={label} className="space-y-3">
     {exportName && <div className="flex justify-end"><BoardCsvButton columns={columns} groups={visible} filename={exportName} /></div>}
-    <div className="scrollbar-thin hidden max-h-[calc(100dvh-11rem)] space-y-6 overflow-auto rounded-xl pb-2 lg:block">
+    <div className="scrollbar-thin hidden max-h-[calc(100dvh-10rem)] space-y-5 overflow-auto rounded-2xl pb-2 lg:block">
       {visible.map((group) => <DesktopGroup key={group.id} group={group} columns={columns} actions={actions} />)}
     </div>
-    <div className="space-y-6 lg:hidden">
+    <div className="space-y-4 lg:hidden">
       {visible.map((group) => <MobileGroup key={group.id} group={group} columns={columns} actions={actions} />)}
     </div>
   </section>;

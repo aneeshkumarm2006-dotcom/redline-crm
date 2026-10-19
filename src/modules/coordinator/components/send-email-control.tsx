@@ -32,18 +32,18 @@ export function SendEmailControl({ leadId, name, email, hasAppointment, primaryC
     });
   }
   return <Sheet open={open} onOpenChange={(value) => { if (!pending) { setOpen(value); setError(""); } }}>
-    <SheetTrigger asChild><Button variant="outline" className="min-h-12 justify-start gap-3"><Send aria-hidden className="size-5" />{copy.sendEmail}</Button></SheetTrigger>
-    <SheetContent side="bottom" showCloseButton={false} style={brandTheme(primaryColor)} className="max-h-[85dvh] overflow-y-auto rounded-t-2xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:mx-auto sm:max-w-lg">
-      <SheetHeader className="p-0 pr-16"><SheetTitle>{copy.sendEmailTitle}</SheetTitle><SheetDescription>{`${name} · ${email}`}</SheetDescription></SheetHeader>
+    <SheetTrigger asChild><Button variant="outline" className="min-h-12 justify-start gap-3 rounded-xl bg-card shadow-xs"><Send aria-hidden className="size-5" />{copy.sendEmail}</Button></SheetTrigger>
+    <SheetContent side="bottom" showCloseButton={false} style={brandTheme(primaryColor)} className="max-h-[85dvh] gap-5 overflow-y-auto rounded-t-[1.25rem] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:mx-auto sm:max-w-lg sm:p-6">
+      <SheetHeader className="p-0 pr-16"><SheetTitle className="text-lg font-semibold tracking-tight">{copy.sendEmailTitle}</SheetTitle><SheetDescription>{`${name} · ${email}`}</SheetDescription></SheetHeader>
       <SheetClose asChild><Button variant="ghost" disabled={pending} className="absolute right-2 top-2 min-h-11 min-w-11">{copy.close}</Button></SheetClose>
       <fieldset className="grid gap-2" disabled={pending}>
         <legend className="mb-2 text-sm text-muted-foreground">{copy.sendEmailHint}</legend>
-        {customerTemplateKeys.map((key) => <label key={key} className={cn("flex min-h-14 cursor-pointer items-start gap-3 rounded-xl border p-3 has-checked:border-primary has-checked:bg-brand-soft",
+        {customerTemplateKeys.map((key) => <label key={key} className={cn("flex min-h-14 cursor-pointer items-start gap-3 rounded-xl border bg-card p-3.5 shadow-xs transition-[border-color,background-color,box-shadow] duration-150 hover:border-foreground/15 has-checked:border-primary has-checked:bg-brand-soft has-checked:ring-1 has-checked:ring-primary has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring",
           !available(key) && "cursor-not-allowed opacity-60")}>
           <input type="radio" name="template" value={key} checked={choice === key} disabled={!available(key)} onChange={() => setChoice(key)} className="mt-0.5 size-5 accent-primary" />
           <span className="min-w-0">
-            <span className="block text-sm font-medium">{copy.templates[key].label}</span>
-            <span className="block text-xs text-muted-foreground">{available(key) ? copy.templates[key].hint : copy.needsAppointment}</span>
+            <span className="block text-sm font-semibold">{copy.templates[key].label}</span>
+            <span className="mt-0.5 block text-xs text-muted-foreground">{available(key) ? copy.templates[key].hint : copy.needsAppointment}</span>
           </span>
         </label>)}
       </fieldset>

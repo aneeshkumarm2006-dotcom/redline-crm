@@ -17,9 +17,18 @@ export function stepLabel(key: JourneyStepKey, assignee: string | null) {
   return key === "assigned" && assignee ? copy.assignedTo(assignee) : copy.steps[key];
 }
 
+/** Stepper tones on the dark ink band; text labels always accompany the colours. */
+const inkTone: Record<JourneyState, { marker: string; line: string; label: string }> = {
+  done: { marker: "border-success bg-success text-white", line: "bg-success", label: "text-ink-foreground" },
+  failed: { marker: "border-primary bg-primary text-primary-foreground", line: "bg-white/15", label: "text-ink-foreground" },
+  skipped: { marker: "border-white/15 bg-white/10 text-ink-muted", line: "bg-white/15", label: "text-ink-muted" },
+  pending: { marker: "border-dashed border-white/30 bg-ink-2 text-ink-muted", line: "bg-white/15", label: "text-ink-muted" },
+};
+
 /**
- * Full journey for one lead: vertical on phones, five columns on wide screens. Each step shows its state,
- * when it happened and who did it (customer, automatic, or a named staff member).
+ * Full journey for one lead, drawn for the dark ink band: rows on phones, five columns joined by horizontal
+ * connectors on wide screens. Each step shows its state, when it happened and who did it (customer,
+ * automatic, or a named staff member).
  */
 export function JourneyStepper({ steps, names, assignee, timeZone }: {
   steps: JourneyStep[]; names: { id: string; name: string }[]; assignee: string | null; timeZone: string;
@@ -27,25 +36,25 @@ export function JourneyStepper({ steps, names, assignee, timeZone }: {
   const time = new Intl.DateTimeFormat("en-CA", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone });
   const actor = (step: JourneyStep) => step.by === "staff" ? names.find((entry) => entry.id === step.actorId)?.name ?? copy.unknownStaff
     : step.by ? copy.by[step.by] : null;
-  return <ol aria-label={copy.journey} className="grid gap-0 lg:grid-cols-5 lg:gap-3">
+  return <ol aria-label={copy.journey} className="grid divide-y divide-white/[0.08] lg:grid-cols-5 lg:gap-4 lg:divide-y-0">
     {steps.map((step, index) => {
       const Icon = stateIcons[step.state] ?? stepIcons[step.key];
-      const tone = stateTone[step.state];
+      const tone = inkTone[step.state];
       const last = index === steps.length - 1;
       const by = actor(step);
-      return <li key={step.key} className="relative flex gap-3 pb-5 last:pb-0 lg:flex-col lg:gap-2 lg:pb-0">
-        {/* Connector to the next step: down on phones, across on wide screens. */}
-        {!last && <span aria-hidden className={cn("absolute top-9 bottom-0 left-[1.0625rem] w-0.5 lg:top-[1.0625rem] lg:right-[-0.75rem] lg:bottom-auto lg:left-11 lg:h-0.5 lg:w-auto", tone.line)} />}
-        <span className={cn("relative z-10 flex size-9 shrink-0 items-center justify-center rounded-full border-2", tone.marker)}>
+      return <li key={step.key} className="relative flex gap-3.5 py-3.5 first:pt-0 last:pb-0 lg:flex-col lg:gap-3 lg:py-0">
+        {/* Horizontal connector to the next step on wide screens. */}
+        {!last && <span aria-hidden className={cn("absolute top-[1.1875rem] right-[-1rem] left-12 hidden h-0.5 rounded-full lg:block", tone.line)} />}
+        <span className={cn("relative z-10 flex size-10 shrink-0 items-center justify-center rounded-full border-2", tone.marker, step.state === "done" && "ring-4 ring-success/20")}>
           <Icon aria-hidden className="size-4" strokeWidth={2.5} />
         </span>
-        <div className="min-w-0 pt-1 lg:pt-0">
-          <p className="break-words text-sm font-semibold">{stepLabel(step.key, assignee)}</p>
-          <p className={cn("text-xs font-medium", step.state === "done" ? "text-success" : step.state === "failed" ? "text-danger" : "text-muted-foreground")}>
-            {copy.states[step.state]}{step.at && <> · <time dateTime={step.at}>{time.format(new Date(step.at))}</time></>}
+        <div className="min-w-0 pt-0.5 lg:pt-0">
+          <p className="break-words text-sm font-semibold text-ink-foreground">{stepLabel(step.key, assignee)}</p>
+          <p className={cn("mt-0.5 text-xs font-medium", tone.label)}>
+            {copy.states[step.state]}{step.at && <span className="text-ink-muted"> · <time dateTime={step.at} className="tabular-nums">{time.format(new Date(step.at))}</time></span>}
           </p>
-          {by && <p className="text-xs text-muted-foreground">{by}</p>}
-          {step.note && <p className="mt-1 break-words text-xs text-muted-foreground">{step.note}</p>}
+          {by && <p className="text-xs text-ink-muted">{by}</p>}
+          {step.note && <p className="mt-1.5 break-words text-xs text-ink-muted">{step.note}</p>}
         </div>
       </li>;
     })}

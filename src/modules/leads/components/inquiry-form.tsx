@@ -45,30 +45,31 @@ export function InquiryForm({ vehicleId, onSubmitAction = submitInquiry, default
     catch { setResult({ ok: false, message: copy.error }); }
     finally { busy.current = false; setPending(false); }
   }
-  if (result?.ok) return <section id={anchor} role="status" className="scroll-mt-24 space-y-4 rounded-2xl border bg-card p-6">
-    <CheckCircle2 className="size-9 text-primary" aria-hidden="true" />
-    <h2 ref={success} tabIndex={-1} className="text-xl font-semibold outline-none">{copy.thankYou}</h2>
+  // Flat by design: the vehicle page's booking panel supplies the card surface.
+  if (result?.ok) return <section id={anchor} role="status" className="scroll-mt-24 space-y-3">
+    <span aria-hidden="true" className="flex size-14 items-center justify-center rounded-2xl bg-success/10 text-success"><CheckCircle2 className="size-7" /></span>
+    <h2 ref={success} tabIndex={-1} className="font-display pt-1 text-xl font-bold outline-none">{copy.thankYou}</h2>
     <p className="text-muted-foreground">{copy.received}</p>
   </section>;
-  return <section id={anchor} className="scroll-mt-24 rounded-2xl border bg-card p-5 sm:p-6" aria-labelledby={`${id}-title`}>
-    <h2 id={`${id}-title`} className="text-xl font-semibold">{title}</h2>
+  return <section id={anchor} className="scroll-mt-24" aria-labelledby={`${id}-title`}>
+    <h2 id={`${id}-title`} className="font-display text-xl font-bold">{title}</h2>
     <p className="mt-2 text-sm leading-6 text-muted-foreground">{intro}</p>
-    <form onSubmit={send} className="mt-6 space-y-4" aria-busy={pending}>
+    <form onSubmit={send} className="mt-5 space-y-4" aria-busy={pending}>
       <fieldset disabled={pending} className="min-w-0 space-y-4">
-        {([ ["name", copy.name, "text", "name", 120], ["email", copy.email, "email", "email", 254], ["phone", copy.phone, "tel", "tel", 40] ] as const).map(([name, label, type, autoComplete, maxLength]) => <div key={name} className="space-y-2">
-          <label htmlFor={`${id}-${name}`} className="text-sm font-medium">{label}</label>
+        {([ ["name", copy.name, "text", "name", 120], ["email", copy.email, "email", "email", 254], ["phone", copy.phone, "tel", "tel", 40] ] as const).map(([name, label, type, autoComplete, maxLength]) => <div key={name} className="space-y-1.5">
+          <label htmlFor={`${id}-${name}`} className="block text-sm font-semibold">{label}</label>
           <Input id={`${id}-${name}`} name={name} type={type} autoComplete={autoComplete} required maxLength={maxLength} minLength={name === "phone" ? 7 : 1}
-            aria-invalid={!!errors?.[name]} aria-describedby={errors?.[name] ? `${id}-${name}-error` : undefined} className="min-h-11 text-base" />
+            aria-invalid={!!errors?.[name]} aria-describedby={errors?.[name] ? `${id}-${name}-error` : undefined} className="h-12 rounded-xl px-4 text-base md:text-base" />
           {errors?.[name] && <p id={`${id}-${name}-error`} className="text-sm text-destructive">{errors[name]}</p>}
         </div>)}
-        <div className="space-y-2">
-          <label htmlFor={`${id}-message`} className="text-sm font-medium">{copy.message}</label>
-          <textarea id={`${id}-message`} name="message" rows={4} maxLength={4000} defaultValue={defaultMessage} className="w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-base focus-visible:outline-2 focus-visible:outline-ring" aria-invalid={!!errors?.message} aria-describedby={errors?.message ? `${id}-message-error` : undefined} />
+        <div className="space-y-1.5">
+          <label htmlFor={`${id}-message`} className="block text-sm font-semibold">{copy.message}</label>
+          <textarea id={`${id}-message`} name="message" rows={4} maxLength={4000} defaultValue={defaultMessage} className="w-full min-w-0 rounded-xl border border-input bg-card px-4 py-3 text-base shadow-xs transition-[border-color,box-shadow] duration-150 outline-none hover:border-foreground/25 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive dark:bg-input/30" aria-invalid={!!errors?.message} aria-describedby={errors?.message ? `${id}-message-error` : undefined} />
           {errors?.message && <p id={`${id}-message-error`} className="text-sm text-destructive">{errors.message}</p>}
         </div>
       </fieldset>
-      {result && !result.ok && <p role="alert" className="text-sm text-destructive">{result.message}</p>}
-      <Button type="submit" disabled={pending} className="min-h-11 w-full">{pending ? copy.pending : copy.submit}</Button>
+      {result && !result.ok && <p role="alert" className="text-sm font-medium text-destructive">{result.message}</p>}
+      <Button type="submit" disabled={pending} className="h-14 w-full rounded-2xl text-[0.9375rem] shadow-[0_6px_16px_-6px_color-mix(in_oklab,var(--primary)_70%,transparent)]">{pending ? copy.pending : copy.submit}</Button>
       <p className="text-xs leading-5 text-muted-foreground">{copy.privacy}</p>
     </form>
   </section>;

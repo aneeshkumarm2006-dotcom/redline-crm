@@ -16,20 +16,20 @@ const labelledKeys = z.array(statusSchema).min(1).refine(uniqueKeys, "Keys must 
 
 // Defaults below keep databases seeded before v2 valid; the seed writes every value explicitly.
 const defaultRepairTypes = [
-  { key: "mechanical", label: "Mechanical", color: "#2563EB" },
-  { key: "body_paint", label: "Body/Paint", color: "#DB2777" },
-  { key: "detailing", label: "Detailing", color: "#0D9488" },
-  { key: "tires", label: "Tires", color: "#475569" },
-  { key: "safety_inspection", label: "Safety inspection", color: "#CA8A04" },
-  { key: "electrical", label: "Electrical", color: "#7C3AED" },
+  { key: "mechanical", label: "Mechanical", color: "#2F5BEA" },
+  { key: "body_paint", label: "Body/Paint", color: "#D9487E" },
+  { key: "detailing", label: "Detailing", color: "#14A38B" },
+  { key: "tires", label: "Tires", color: "#4B5568" },
+  { key: "safety_inspection", label: "Safety inspection", color: "#E8B21C" },
+  { key: "electrical", label: "Electrical", color: "#7C5CFC" },
 ];
 const defaultLeadSources = [
-  { key: "website", label: "Website", color: "#2563EB" },
-  { key: "phone", label: "Phone", color: "#0D9488" },
-  { key: "walk_in", label: "Walk-in", color: "#B45309" },
-  { key: "facebook", label: "Facebook", color: "#1D4ED8" },
-  { key: "autotrader", label: "AutoTrader", color: "#EA580C" },
-  { key: "referral", label: "Referral", color: "#15803D" },
+  { key: "website", label: "Website", color: "#2F5BEA" },
+  { key: "phone", label: "Phone", color: "#14A38B" },
+  { key: "walk_in", label: "Walk-in", color: "#F07B3F" },
+  { key: "facebook", label: "Facebook", color: "#1E40C0" },
+  { key: "autotrader", label: "AutoTrader", color: "#C2410C" },
+  { key: "referral", label: "Referral", color: "#0B875E" },
 ];
 
 export const settingsSchema = z.object({
@@ -78,6 +78,8 @@ export const settingsSchema = z.object({
     .default({ warnDays: 45, criticalDays: 90 }),
   repairOverdueDays: z.number().int().min(1).max(365).default(7),
   uncontactedLeadHours: z.number().int().min(1).max(720).default(24),
+  // Days after an inquiry to email a customer who has not booked yet; the last one is the final check-in.
+  customerFollowUpDays: z.array(z.number().int().min(1).max(60)).min(1).max(5).refine((days) => days.every((day, index) => index === 0 || day > days[index - 1]), "Use increasing days, e.g. 2, 5.").default([2, 5]),
   // Recipe on/off switches keyed by recipe key (see modules/automations). A missing key means on.
   automations: z.record(key, z.boolean()).default({}),
   notificationRules: z.array(z.object({
@@ -127,6 +129,7 @@ export const settingsSectionSchema = z.discriminatedUnion("section", [
     inventoryAging: z.object({ warnDays: z.number().int().min(1).max(3650), criticalDays: z.number().int().min(1).max(3650) }).strict()
       .refine((value) => value.warnDays < value.criticalDays, "Critical age must follow the warning age."),
     repairOverdueDays: z.number().int().min(1).max(365), uncontactedLeadHours: z.number().int().min(1).max(720),
+    customerFollowUpDays: z.array(z.number().int().min(1).max(60)).min(1).max(5).refine((days) => days.every((day, index) => index === 0 || day > days[index - 1]), "Use increasing days, e.g. 2, 5."),
   }).strict() }).strict(),
 ]);
 export type SettingsSectionInput = z.infer<typeof settingsSectionSchema>;

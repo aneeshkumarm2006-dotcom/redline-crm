@@ -34,17 +34,17 @@ export function VehicleControls({ vehicle, settings, price = false }: { vehicle:
   }
   return <Sheet open={open} onOpenChange={(value) => { if (!pending) { setOpen(value); setError(""); } }}>
     <SheetTrigger asChild><Button variant="outline" className="min-h-11 min-w-11" aria-label={`${title}: ${vehicle.stockNo}`}>{price ? title : <StatusBadgeView kind="vehicle" status={vehicle.status} settings={settings} />}</Button></SheetTrigger>
-    <SheetContent side="bottom" showCloseButton={false} style={brandTheme(settings.brand.primaryColor)} className="max-h-[85dvh] overflow-y-auto rounded-t-2xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:mx-auto sm:max-w-lg">
-      <SheetHeader className="p-0 pr-12"><SheetTitle>{title}</SheetTitle><SheetDescription>{vehicleTitle(vehicle)} · {vehicle.stockNo}<br />{price ? copy.priceHint : copy.statusHint}</SheetDescription></SheetHeader>
-      <SheetClose asChild><Button variant="ghost" disabled={pending} className="absolute right-2 top-2 min-h-11 min-w-11">{copy.close}</Button></SheetClose>
+    <SheetContent side="bottom" showCloseButton={false} style={brandTheme(settings.brand.primaryColor)} className="max-h-[85dvh] gap-5 overflow-y-auto rounded-t-[1.25rem] bg-card p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-lg sm:mx-auto sm:max-w-lg sm:p-6">
+      <SheetHeader className="gap-1 p-0 pr-16"><SheetTitle className="font-display text-xl tracking-tight">{title}</SheetTitle><SheetDescription>{vehicleTitle(vehicle)} · <span className="font-mono text-[0.8125rem]">{vehicle.stockNo}</span><br />{price ? copy.priceHint : copy.statusHint}</SheetDescription></SheetHeader>
+      <SheetClose asChild><Button variant="ghost" disabled={pending} className="absolute right-3 top-3 min-h-11 min-w-11">{copy.close}</Button></SheetClose>
       {price ? <form onSubmit={(event) => { event.preventDefault(); save(String(new FormData(event.currentTarget).get("price"))); }} className="space-y-4">
-        <label className="block space-y-2"><span className="text-sm font-medium">{copy.fields.price}</span><Input name="price" type="number" inputMode="decimal" min="0" max="100000000" step="0.01" required defaultValue={vehicle.price} className="min-h-11 text-base" disabled={pending} /></label>
+        <label className="block space-y-2"><span className="text-sm font-medium">{copy.fields.price}</span><Input name="price" type="number" inputMode="decimal" min="0" max="100000000" step="0.01" required defaultValue={vehicle.price} className="font-display min-h-12 text-lg font-semibold tabular-nums md:text-lg" disabled={pending} /></label>
         <Button type="submit" className="min-h-11 w-full" disabled={pending}>{pending ? copy.saving : copy.savePrice}</Button>
-      </form> : <div className="grid gap-2">{settings.vehicleStatuses.map((status) => <Button key={status.key} variant="outline" className="min-h-14 justify-between whitespace-normal text-left" disabled={pending || status.key === vehicle.status} onClick={() => save(status.key)}>
-        <StatusBadgeView kind="vehicle" status={status.key} settings={settings} />{status.key === vehicle.status && <span className="text-xs text-muted-foreground">{copy.current}</span>}
+      </form> : <div className="grid gap-2">{settings.vehicleStatuses.map((status) => <Button key={status.key} variant="outline" className="min-h-14 justify-between rounded-xl px-4 whitespace-normal text-left disabled:opacity-100 disabled:bg-muted" disabled={pending || status.key === vehicle.status} onClick={() => save(status.key)}>
+        <StatusBadgeView kind="vehicle" status={status.key} settings={settings} />{status.key === vehicle.status && <span className="eyebrow">{copy.current}</span>}
       </Button>)}</div>}
-      {pending && <p role="status" className="text-sm">{copy.saving}</p>}
-      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      {pending && <p role="status" className="text-sm text-muted-foreground">{copy.saving}</p>}
+      {error && <p role="alert" className="rounded-lg bg-danger/8 px-3 py-2 text-sm text-destructive">{error}</p>}
     </SheetContent>
   </Sheet>;
 }

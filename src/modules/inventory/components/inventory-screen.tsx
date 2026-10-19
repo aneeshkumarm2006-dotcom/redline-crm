@@ -1,9 +1,12 @@
 import Link from "next/link";
-import { X } from "lucide-react";
+import { CarFront, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DropdownField } from "@/components/ui/dropdown-field";
 import { Input } from "@/components/ui/input";
 import { Board, type BoardColumn, type BoardGroup, type BoardItem } from "@/components/shared/board";
+import { EmptyState } from "@/components/shared/empty-state";
 import { FilterDisclosure } from "@/components/shared/filter-disclosure";
+import { PageHeader } from "@/components/shared/page-header";
 import { colorFromName } from "@/lib/color";
 import { cn } from "@/lib/utils";
 import { requirePageUser } from "@/modules/auth/page-guards";
@@ -46,7 +49,6 @@ export async function InventoryScreen({ searchParams }: { searchParams: Inventor
   const repairType = (key: string) => settings.repairTypes.find((item) => item.key === key) ?? { key, label: key, color: "#94A3B8" };
   const canEdit = user.role === "owner";
   const roles = settings.statusRoles;
-  const selectClass = "min-h-11 w-full min-w-0 rounded-md border bg-background px-3 text-base";
   const statuses = [...settings.vehicleStatuses, ...[...new Set(summary.map((row) => row.status))].filter((key) => !settings.vehicleStatuses.some((status) => status.key === key)).map((key) => ({ key, label: key, color: "#888888" }))];
   const now = requestNow();
   const byLocation = filters.groupBy === "location";
@@ -107,44 +109,66 @@ export async function InventoryScreen({ searchParams }: { searchParams: Inventor
     ...(ageRange ? [{ key: "age", label: copy.ageRange(filters.minDays, filters.maxDays), href: boardHref(filters, { minDays: undefined, maxDays: undefined }) }] : []),
     ...(filters.soldBy ? [{ key: "soldBy", label: copy.soldByFilter(sellers.find((entry) => entry.id === filters.soldBy)?.name ?? copy.unknownActor), href: boardHref(filters, { soldBy: undefined }) }] : []),
   ];
+  const field = "min-w-0 space-y-2";
   return <>
-    <header className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-3xl font-semibold tracking-tight">{copy.title}</h1><p className="mt-2 text-sm text-muted-foreground">{copy.intro}</p></div>{canEdit && <Button asChild className="min-h-11"><Link href="/crm/inventory/new">{copy.add}</Link></Button>}</header>
-    <section aria-labelledby="stock-summary" className="space-y-3"><div><h2 id="stock-summary" className="font-semibold">{copy.summary}</h2><p className="text-xs leading-5 text-muted-foreground">{copy.summaryHint}</p></div>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{dealerships.map((dealership) => <div key={dealership.id} className="min-w-0 rounded-xl border bg-card p-4"><h3 className="break-words text-sm font-medium">{dealership.name}</h3><dl className="mt-3 flex flex-wrap gap-x-5 gap-y-3">{statuses.map((status) => <div key={status.key}><dt className="flex items-center gap-1.5 text-xs text-muted-foreground"><span aria-hidden className="size-2 rounded-full" style={{ backgroundColor: status.color }} />{status.label}</dt><dd className="mt-1 text-xl font-semibold tabular-nums">{summary.find((row) => row.dealershipId === dealership.id && row.status === status.key)?.count ?? 0}</dd></div>)}</dl></div>)}</div>
+    <PageHeader title={copy.title} description={copy.intro}
+      actions={canEdit && <Button asChild size="lg"><Link href="/crm/inventory/new"><Plus aria-hidden />{copy.add}</Link></Button>}>
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+        <nav aria-label={copy.groupBy} className="flex min-w-0 items-center gap-3">
+          <span className="eyebrow">{copy.groupBy}</span>
+          <span className="inline-flex gap-1 rounded-xl bg-muted p-1">{inventoryGroupings.map((grouping) => <Link key={grouping} href={boardHref(filters, { groupBy: grouping })} aria-current={filters.groupBy === grouping ? "page" : undefined}
+            className={cn("inline-flex min-h-9 items-center rounded-lg px-3.5 text-sm font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", filters.groupBy === grouping ? "bg-card text-foreground shadow-sm ring-1 ring-border" : "text-muted-foreground hover:text-foreground")}>{copy.groupings[grouping]}</Link>)}</span>
+        </nav>
+        <div className="min-w-0 flex-1"><SavedViews board="inventory" views={views} currentQuery={new URLSearchParams(raw).toString()} primaryColor={settings.brand.primaryColor} /></div>
+      </div>
+    </PageHeader>
+    <section aria-labelledby="stock-summary" className="space-y-4">
+      <div><h2 id="stock-summary" className="text-lg font-semibold tracking-tight">{copy.summary}</h2><p className="mt-0.5 text-sm text-muted-foreground">{copy.summaryHint}</p></div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{dealerships.map((dealership) => {
+        const count = (key: string) => summary.find((row) => row.dealershipId === dealership.id && row.status === key)?.count ?? 0;
+        const total = statuses.reduce((sum, status) => sum + count(status.key), 0);
+        return <div key={dealership.id} className="min-w-0 rounded-2xl border bg-card p-5 shadow-xs sm:p-6">
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="min-w-0 break-words pt-1 text-[0.9375rem] font-semibold">{dealership.name}</h3>
+            <span className="font-display shrink-0 text-[1.75rem] leading-none font-semibold tabular-nums">{total}</span>
+          </div>
+          <div aria-hidden className="mt-4 flex h-2 gap-0.5 overflow-hidden rounded-full bg-muted">{total > 0 && statuses.filter((status) => count(status.key)).map((status) =>
+            <span key={status.key} className="h-full first:rounded-l-full last:rounded-r-full" style={{ flexGrow: count(status.key), flexBasis: 0, backgroundColor: status.color }} />)}</div>
+          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">{statuses.map((status) => <div key={status.key} className="min-w-0">
+            <dt className="flex items-center gap-1.5 truncate text-xs text-muted-foreground"><span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: status.color }} />{status.label}</dt>
+            <dd className="font-display mt-1 text-lg font-semibold tabular-nums">{count(status.key)}</dd>
+          </div>)}</dl>
+        </div>;
+      })}</div>
     </section>
-    <SavedViews board="inventory" views={views} currentQuery={new URLSearchParams(raw).toString()} primaryColor={settings.brand.primaryColor} />
     <FilterDisclosure label={copy.filters} active={active}>
-      <form action="/crm/inventory" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <form action="/crm/inventory" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-12">
         {byLocation && <input type="hidden" name="groupBy" value="location" />}
         {(["minDays", "maxDays", "soldBy"] as const).map((key) => filters[key] !== undefined && <input key={key} type="hidden" name={key} value={String(filters[key])} />)}
-        <label className="min-w-0 space-y-2 sm:col-span-2"><span className="text-sm font-medium">{copy.search}</span><Input type="search" name="q" defaultValue={filters.q} placeholder={copy.searchPlaceholder} maxLength={120} className="min-h-11 text-base" /></label>
-        <label className="min-w-0 space-y-2"><span className="text-sm font-medium">{copy.dealership}</span><select name="dealershipId" defaultValue={filters.dealershipId ?? ""} className={selectClass}><option value="">{copy.allDealerships}</option>{dealerships.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-        <label className="min-w-0 space-y-2"><span className="text-sm font-medium">{copy.status}</span><select name="status" defaultValue={filters.status ?? ""} className={selectClass}><option value="">{copy.allStatuses}</option>{statuses.map((status) => <option key={status.key} value={status.key}>{status.label}</option>)}</select></label>
-        <label className="min-w-0 space-y-2"><span className="text-sm font-medium">{copy.repairType}</span><select name="repairType" defaultValue={filters.repairType ?? ""} className={selectClass}><option value="">{copy.allRepairTypes}</option>{settings.repairTypes.map((type) => <option key={type.key} value={type.key}>{type.label}</option>)}</select></label>
-        <label className="min-w-0 space-y-2"><span className="text-sm font-medium">{copy.garage}</span><select name="garageId" defaultValue={filters.garageId ?? ""} className={selectClass}><option value="">{copy.allGarages}</option>{garages.map((garage) => <option key={garage.id} value={garage.id}>{garage.name}</option>)}</select></label>
-        <label className="min-w-0 space-y-2"><span className="text-sm font-medium">{copy.soldWindow}</span><select name="sold" defaultValue={filters.sold} className={selectClass}>{(["month", "all"] as const).map((key) => <option key={key} value={key}>{copy.soldWindows[key]}</option>)}</select></label>
-        <label className="flex min-h-11 min-w-0 cursor-pointer items-center gap-3 self-end rounded-md border bg-background px-3">
-          <input type="checkbox" name="aging" value="1" defaultChecked={Boolean(filters.aging)} className="size-5 accent-primary" />
+        <label className={cn(field, "sm:col-span-2 xl:col-span-4")}><span className="text-sm font-medium">{copy.search}</span><Input type="search" name="q" defaultValue={filters.q} placeholder={copy.searchPlaceholder} maxLength={120} className="min-h-11 text-base md:text-sm" /></label>
+        <label className={cn(field, "xl:col-span-2")}><span className="text-sm font-medium">{copy.dealership}</span><DropdownField name="dealershipId" defaultValue={filters.dealershipId ?? ""} options={[{ value: "", label: copy.allDealerships }, ...dealerships.map((item) => ({ value: item.id, label: item.name }))]} /></label>
+        <label className={cn(field, "xl:col-span-2")}><span className="text-sm font-medium">{copy.status}</span><DropdownField name="status" defaultValue={filters.status ?? ""} options={[{ value: "", label: copy.allStatuses }, ...statuses.map((status) => ({ value: status.key, label: status.label }))]} /></label>
+        <label className={cn(field, "xl:col-span-2")}><span className="text-sm font-medium">{copy.repairType}</span><DropdownField name="repairType" defaultValue={filters.repairType ?? ""} options={[{ value: "", label: copy.allRepairTypes }, ...settings.repairTypes.map((type) => ({ value: type.key, label: type.label }))]} /></label>
+        <label className={cn(field, "xl:col-span-2")}><span className="text-sm font-medium">{copy.garage}</span><DropdownField name="garageId" defaultValue={filters.garageId ?? ""} options={[{ value: "", label: copy.allGarages }, ...garages.map((garage) => ({ value: garage.id, label: garage.name }))]} /></label>
+        <label className={cn(field, "xl:col-span-3")}><span className="text-sm font-medium">{copy.soldWindow}</span><DropdownField name="sold" defaultValue={filters.sold} options={(["month", "all"] as const).map((key) => ({ value: key, label: copy.soldWindows[key] }))} /></label>
+        <label className="flex min-h-11 min-w-0 cursor-pointer items-center gap-3 self-end rounded-lg border border-input bg-card px-3 py-2 shadow-xs transition-colors duration-150 hover:border-foreground/25 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring xl:col-span-6">
+          <input type="checkbox" name="aging" value="1" defaultChecked={Boolean(filters.aging)} className="size-5 shrink-0 accent-primary" />
           <span className="min-w-0"><span className="block text-sm font-medium">{copy.agingOnly}</span><span className="block text-xs text-muted-foreground">{copy.agingHint(settings.inventoryAging.warnDays)}</span></span>
         </label>
-        <Button type="submit" className="min-h-11 self-end sm:col-span-2 xl:col-span-1">{copy.apply}</Button>
+        <Button type="submit" className="min-h-11 self-end sm:col-span-2 xl:col-span-3">{copy.apply}</Button>
       </form>
     </FilterDisclosure>
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <nav aria-label={copy.groupBy} className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">{copy.groupBy}</span>
-        <span className="inline-flex rounded-lg border bg-card p-0.5">{inventoryGroupings.map((grouping) => <Link key={grouping} href={boardHref(filters, { groupBy: grouping })} aria-current={filters.groupBy === grouping ? "page" : undefined}
-          className={cn("inline-flex min-h-10 items-center rounded-md px-3 text-sm font-medium", filters.groupBy === grouping ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}>{copy.groupings[grouping]}</Link>)}</span>
-      </nav>
-      <div className="flex items-center gap-2"><p className="text-sm text-muted-foreground">{copy.results(result.total)}</p>{active > 0 && <Button asChild variant="ghost" className="min-h-11"><Link href={boardHref(inventoryFilterSchema.parse({ groupBy: filters.groupBy }))}>{copy.clear}</Link></Button>}</div>
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <p className="text-sm font-medium tabular-nums text-muted-foreground">{copy.results(result.total)}</p>
+      {linked.length > 0 && <ul aria-label={copy.linkedFilters} className="flex flex-wrap gap-2">{linked.map((entry) => <li key={entry.key}>
+        <Link href={entry.href} aria-label={copy.removeFilter(entry.label)} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-primary/25 bg-brand-soft pr-2 pl-3.5 text-sm font-medium transition-colors duration-150 hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-ring">
+          <span aria-hidden className="size-1.5 rounded-full bg-primary" />{entry.label}<span aria-hidden className="flex size-6 items-center justify-center rounded-full bg-card/70"><X className="size-3.5 text-muted-foreground" /></span>
+        </Link>
+      </li>)}</ul>}
+      {active > 0 && <Button asChild variant="ghost" className="ml-auto min-h-11"><Link href={boardHref(inventoryFilterSchema.parse({ groupBy: filters.groupBy }))}>{copy.clear}</Link></Button>}
     </div>
-    {linked.length > 0 && <ul aria-label={copy.linkedFilters} className="flex flex-wrap gap-2">{linked.map((entry) => <li key={entry.key}>
-      <Link href={entry.href} aria-label={copy.removeFilter(entry.label)} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-primary/40 bg-primary/5 px-3 text-sm font-medium hover:bg-primary/10 focus-visible:outline-2 focus-visible:outline-ring">
-        {entry.label}<X aria-hidden className="size-4 text-muted-foreground" />
-      </Link>
-    </li>)}</ul>}
-    {result.truncated && <p role="status" className="rounded-lg border bg-muted/50 px-3 py-2 text-sm">{copy.truncated(result.vehicles.length, result.total)}</p>}
-    {result.vehicles.length === 0 ? <div className="rounded-xl border bg-card p-10 text-center"><h2 className="font-semibold">{copy.empty}</h2><p className="mt-2 text-sm text-muted-foreground">{copy.emptyHint}</p></div>
+    {result.truncated && <p role="status" className="flex items-center gap-2.5 rounded-xl border bg-card px-4 py-3 text-sm shadow-xs"><span aria-hidden className="size-2 shrink-0 rounded-full bg-warning" />{copy.truncated(result.vehicles.length, result.total)}</p>}
+    {result.vehicles.length === 0 ? <EmptyState icon={CarFront} title={copy.empty} description={copy.emptyHint} />
       : <Board label={copy.board} columns={columns} groups={groups} onStatusChange={canEdit ? boardStatusAction : undefined} onMoneyChange={canEdit ? boardPriceAction : undefined} hideEmptyGroups={active > 0} exportName="inventory" />}
   </>;
 }

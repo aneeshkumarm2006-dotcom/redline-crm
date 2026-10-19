@@ -3,6 +3,7 @@ import { BadgeDollarSign, CarFront, Hourglass, Percent, UserPlus, Wallet } from 
 import { BarChart, ChartCard, FunnelChart } from "@/components/shared/charts";
 import { formatValue } from "@/components/shared/charts/format";
 import { KpiRow, StatCard } from "@/components/shared/stats/stat-card";
+import { PageHeader } from "@/components/shared/page-header";
 import { requestNow } from "@/lib/clock";
 import { requirePageUser } from "@/modules/auth/page-guards";
 import { AppointmentList, describeAppointments } from "@/modules/appointments/components/appointments-screen";
@@ -29,13 +30,12 @@ export async function OwnerDashboard({ searchParams }: { searchParams: Promise<R
   const bucketColor = (bucket: AgingBucket) => bucket.min > criticalDays ? "var(--danger)" : bucket.max !== null && bucket.max <= warnDays ? "var(--success)" : "var(--warning)";
 
   return <>
-    <header className="space-y-3">
-      <div><h1 className="text-3xl font-semibold tracking-tight">{copy.commandCenter}</h1>
-        <p className="mt-2 break-words text-sm text-muted-foreground">{copy.greeting(user.name)} {locationName ? copy.introLocation(locationName) : copy.intro}</p></div>
+    <PageHeader eyebrow={locationName ?? copy.allLocations} title={copy.commandCenter}
+      description={<>{copy.greeting(user.name)} {locationName ? copy.introLocation(locationName) : copy.intro}</>}>
       <LocationFilter dealerships={dealerships.filter((entry) => entry.active || entry.id === dealershipId)} current={dealershipId} />
-    </header>
+    </PageHeader>
 
-    <KpiRow label={copy.kpis} className="xl:grid-cols-3">
+    <KpiRow label={copy.kpis}>
       <StatCard label={copy.inventoryValue} icon={Wallet} value={stock.value} format="money" hint={copy.inStock(stock.units)} href={at("/crm/inventory")} />
       <StatCard label={copy.averageDays} icon={Hourglass} value={stock.averageDays === null ? copy.none : copy.days(stock.averageDays)}
         hint={copy.agingHint(stock.aging, warnDays)} href={at("/crm/inventory", { aging: 1 })} />
@@ -48,44 +48,45 @@ export async function OwnerDashboard({ searchParams }: { searchParams: Promise<R
       <StatCard label={copy.commissionPayable} icon={BadgeDollarSign} value={sales.thisMonth.commission} format="money" hint={copy.commissionHint} href="/crm/team/commissions" />
     </KpiRow>
 
-    <section aria-labelledby="dashboard-status" className="space-y-3">
-      <SectionHeading id="dashboard-status" title={copy.unitsByStatus} hint={copy.unitsByStatusHint} />
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{stock.statuses.map((status) => <StatCard key={status.key} label={status.label} color={status.color}
-        value={stock.byStatus[status.key] ?? 0} hint={status.key === roles.sold ? copy.soldThisMonth : undefined} href={at("/crm/inventory", { status: status.key })} />)}</div>
-    </section>
+    <div className="grid gap-6 xl:grid-cols-12">
+      <section aria-labelledby="dashboard-status" className="min-w-0 space-y-3 xl:col-span-5">
+        <SectionHeading id="dashboard-status" title={copy.unitsByStatus} hint={copy.unitsByStatusHint} />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-2">{stock.statuses.map((status) => <StatCard key={status.key} label={status.label} color={status.color}
+          value={stock.byStatus[status.key] ?? 0} hint={status.key === roles.sold ? copy.soldThisMonth : undefined} href={at("/crm/inventory", { status: status.key })} />)}</div>
+      </section>
+      <div className="min-w-0 xl:col-span-7"><NeedsAttention variant="ink" data={attention} repairStatusKey={roles.repair} dealershipId={dealershipId} /></div>
+    </div>
 
-    <NeedsAttention data={attention} repairStatusKey={roles.repair} dealershipId={dealershipId} />
-
-    <div className="grid gap-4 lg:grid-cols-2">
-      <ChartCard title={copy.leaderboard} description={copy.leaderboardHint} action={<Link href="/crm/team" className={textLink}>{copy.openTeam}</Link>}>
-        <Leaderboard rows={sales.leaderboard} locationName={dealershipId ? undefined : (id) => dealerships.find((entry) => entry.id === id)?.name ?? ""} />
-      </ChartCard>
-      <ChartCard title={copy.salesByMonth} description={copy.salesByMonthHint}>
-        <BarChart title={copy.salesByMonth} format="money" series={[{ key: "revenue", label: copy.revenue }]}
+    <div className="grid gap-4 sm:gap-5 xl:grid-cols-12">
+      <ChartCard title={copy.salesByMonth} description={copy.salesByMonthHint} className="xl:col-span-8">
+        <BarChart title={copy.salesByMonth} format="money" height={320} series={[{ key: "revenue", label: copy.revenue }]}
           data={sales.months.map((month) => ({ label: month.label, href: `/crm/team/commissions?month=${month.key}`, values: { revenue: month.revenue } }))} />
       </ChartCard>
-      <ChartCard title={copy.funnel} description={copy.funnelHint(leads.lost)}>
+      <ChartCard title={copy.leaderboard} description={copy.leaderboardHint} action={<Link href="/crm/team" className={textLink}>{copy.openTeam}</Link>} className="xl:col-span-4">
+        <Leaderboard rows={sales.leaderboard} locationName={dealershipId ? undefined : (id) => dealerships.find((entry) => entry.id === id)?.name ?? ""} />
+      </ChartCard>
+      <ChartCard title={copy.funnel} description={copy.funnelHint(leads.lost)} className="xl:col-span-4">
         {leads.total ? <FunnelChart title={copy.funnel} conversionLabel={copy.ofLeads}
           steps={leads.steps.map((step) => ({ key: step.key, label: step.label, value: step.value, color: step.color, href: at("/crm/leads", { view: "list", stage: step.key }) }))} />
           : <p className="text-sm text-muted-foreground">{copy.noLeads}</p>}
       </ChartCard>
-      <ChartCard title={copy.aging} description={copy.agingChartHint(warnDays, criticalDays)}>
+      <ChartCard title={copy.aging} description={copy.agingChartHint(warnDays, criticalDays)} className="xl:col-span-4">
         <BarChart title={copy.aging} height={200} series={[{ key: "cars", label: copy.cars }]}
           data={stock.buckets.map((bucket) => ({ label: copy.bucket(bucket.min, bucket.max), color: bucketColor(bucket), values: { cars: bucket.count },
             href: at("/crm/inventory", { minDays: bucket.min, maxDays: bucket.max ?? undefined }) }))} />
       </ChartCard>
-      <ChartCard title={copy.stockByLocation} description={copy.stockByLocationHint} className="lg:col-span-2">
+      <ChartCard title={copy.stockByLocation} description={copy.stockByLocationHint} className="xl:col-span-4">
         <StockByLocation rows={stock.byLocation} statuses={stock.statuses} />
       </ChartCard>
     </div>
 
-    <div className="grid gap-6 lg:grid-cols-2">
-      <section aria-labelledby="dashboard-appointments" className="min-w-0 space-y-3">
+    <div className="grid gap-6 xl:grid-cols-12">
+      <section aria-labelledby="dashboard-appointments" className="min-w-0 space-y-3 xl:col-span-5">
         <SectionHeading id="dashboard-appointments" title={copy.todaysAppointments} action={<Link href="/crm/leads/appointments" className={textLink}>{copy.viewAppointments}</Link>} />
         {appointments.length ? <AppointmentList appointments={appointments} timeZone={timeZone} showDate={false} showSalesperson />
-          : <p className="rounded-xl border border-dashed bg-card p-4 text-sm text-muted-foreground">{copy.noAppointments}</p>}
+          : <p className="rounded-2xl border bg-card p-5 text-sm text-muted-foreground shadow-xs">{copy.noAppointments}</p>}
       </section>
-      <section aria-labelledby="dashboard-activity" className="min-w-0 space-y-3">
+      <section aria-labelledby="dashboard-activity" className="min-w-0 space-y-3 xl:col-span-7">
         <SectionHeading id="dashboard-activity" title={copy.recent} />
         <ActivityList activity={data.activity} timeZone={timeZone} />
       </section>

@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { Users } from "lucide-react";
+import { BadgeDollarSign, CarFront, FileSpreadsheet, UserPlus, Users, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Board, type BoardColumn, type BoardGroup } from "@/components/shared/board";
 import { BarChart, ChartCard } from "@/components/shared/charts";
 import { EmptyState } from "@/components/shared/empty-state";
+import { PageHeader } from "@/components/shared/page-header";
 import { KpiRow, StatCard } from "@/components/shared/stats/stat-card";
 import { requestNow } from "@/lib/clock";
 import { colorFromName } from "@/lib/color";
@@ -52,25 +53,24 @@ export async function TeamScreen() {
   const thisMonth = months[months.length - 1];
   const chartData = months.map((month) => ({ label: month.label, values: { units: month.units, commission: month.commission } }));
   return <>
-    <header className="flex flex-wrap items-start justify-between gap-4">
-      <div><h1 className="text-3xl font-semibold tracking-tight">{copy.title}</h1><p className="mt-2 text-sm text-muted-foreground">{copy.intro}</p></div>
-      <div className="flex flex-wrap gap-2">
-        <Button asChild variant="outline" className="min-h-11"><Link href="/crm/team/commissions">{copy.commissionReport}</Link></Button>
-        <StaffFormSheet dealerships={dealerships}primaryColor={settings.brand.primaryColor} />
-      </div>
-    </header>
+    <PageHeader title={copy.title} description={copy.intro} actions={<>
+      <Button asChild variant="outline" className="min-h-11 gap-2"><Link href="/crm/team/commissions"><FileSpreadsheet aria-hidden className="size-4" />{copy.commissionReport}</Link></Button>
+      <StaffFormSheet dealerships={dealerships} primaryColor={settings.brand.primaryColor} />
+    </>} />
     {!people.length ? <EmptyState icon={Users} title={copy.empty} description={copy.emptyHint} /> : <>
-      <KpiRow label={copy.kpis}>
-        <StatCard label={copy.unitsThisMonth} value={thisMonth?.units ?? 0} hint={targets.length ? copy.targetHint(teamTarget) : copy.noTarget} />
-        <StatCard label={copy.revenueThisMonth} value={thisMonth?.revenue ?? 0} format="money" />
-        <StatCard label={copy.commissionThisMonth} value={thisMonth?.commission ?? 0} format="money" href="/crm/team/commissions" />
-        <StatCard label={copy.openLeads} value={sum((entry) => entry.openLeads)} href="/crm/leads" />
+      <KpiRow label={copy.kpis} className="md:grid-cols-4 2xl:grid-cols-4">
+        <StatCard label={copy.unitsThisMonth} icon={CarFront} value={thisMonth?.units ?? 0} hint={targets.length ? copy.targetHint(teamTarget) : copy.noTarget} />
+        <StatCard label={copy.revenueThisMonth} icon={Wallet} value={thisMonth?.revenue ?? 0} format="money" />
+        <StatCard label={copy.commissionThisMonth} icon={BadgeDollarSign} value={thisMonth?.commission ?? 0} format="money" href="/crm/team/commissions" />
+        <StatCard label={copy.openLeads} icon={UserPlus} value={sum((entry) => entry.openLeads)} href="/crm/leads" />
       </KpiRow>
-      <Board label={copy.board} columns={columns} groups={groups} hideEmptyGroups exportName="team" />
-      <p className="text-xs text-muted-foreground">{copy.columns.conversion}: {copy.conversionHint}</p>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard title={copy.unitsChart} description={copy.chartsTitle}><BarChart title={copy.unitsChart} data={chartData} series={[{ key: "units", label: copy.series.units }]} /></ChartCard>
-        <ChartCard title={copy.commissionChart} description={copy.chartsTitle}><BarChart title={copy.commissionChart} data={chartData} series={[{ key: "commission", label: copy.series.commission }]} format="money" /></ChartCard>
+      <div className="space-y-3">
+        <Board label={copy.board} columns={columns} groups={groups} hideEmptyGroups exportName="team" />
+        <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">{copy.columns.conversion}:</span> {copy.conversionHint}</p>
+      </div>
+      <div className="grid gap-4 sm:gap-5 xl:grid-cols-12">
+        <ChartCard title={copy.commissionChart} description={copy.chartsTitle} className="xl:col-span-7"><BarChart title={copy.commissionChart} height={280} data={chartData} series={[{ key: "commission", label: copy.series.commission }]} format="money" /></ChartCard>
+        <ChartCard title={copy.unitsChart} description={copy.chartsTitle} className="xl:col-span-5"><BarChart title={copy.unitsChart} height={280} data={chartData} series={[{ key: "units", label: copy.series.units }]} /></ChartCard>
       </div>
     </>}
   </>;

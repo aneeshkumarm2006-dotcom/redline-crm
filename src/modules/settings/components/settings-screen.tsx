@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/shared/page-header";
 import { requirePageUser } from "@/modules/auth/page-guards";
 import { listEmailTemplates } from "@/modules/email-templates/service";
 import { TemplatesAdmin } from "@/modules/email-templates/components/templates-admin";
@@ -20,17 +21,18 @@ export async function SettingsScreen({ searchParams }: { searchParams: Promise<R
   const settings = await getSettings();
   const version = (value: unknown) => JSON.stringify(value);
   return <>
-    <header><h1 className="text-3xl font-semibold tracking-tight">{copy.title}</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">{copy.intro}</p></header>
-    <nav aria-label={copy.tabsLabel} className="-mx-4 flex gap-1 overflow-x-auto border-b px-4 sm:mx-0 sm:px-0">
-      {tabs.map((entry) => <Link key={entry} href={entry === "brand" ? "/crm/settings" : `/crm/settings?tab=${entry}`} scroll={false} aria-current={tab === entry ? "page" : undefined}
-        className={cn("-mb-px inline-flex min-h-11 shrink-0 items-center border-b-2 px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-ring",
-          tab === entry ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>{copy.tabs[entry]}</Link>)}
-    </nav>
+    <PageHeader title={copy.title} description={copy.intro}>
+      <nav aria-label={copy.tabsLabel} className="scrollbar-thin flex w-full gap-1 overflow-x-auto rounded-xl bg-muted p-1 sm:w-fit">
+        {tabs.map((entry) => <Link key={entry} href={entry === "brand" ? "/crm/settings" : `/crm/settings?tab=${entry}`} scroll={false} aria-current={tab === entry ? "page" : undefined}
+          className={cn("inline-flex min-h-9 shrink-0 items-center rounded-lg px-3.5 text-sm font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring pointer-coarse:min-h-11",
+            tab === entry ? "bg-card text-foreground shadow-sm ring-1 ring-border" : "text-muted-foreground hover:text-foreground")}>{copy.tabs[entry]}</Link>)}
+      </nav>
+    </PageHeader>
     {tab === "brand" && <BrandForm key={version(settings.brand)} brand={settings.brand} />}
     {tab === "inventory" && <InventorySettingsForm key={version([settings.vehicleStatuses, settings.repairTypes, settings.statusRoles, settings.publicInventoryStatusKeys])} settings={settings} />}
     {tab === "leads" && <LeadSettingsForm key={version([settings.leadStages, settings.leadSources, settings.wonStageKey, settings.lostStageKey, settings.booking.appointmentStageKey, settings.publicInquirySourceKey])} settings={settings} />}
     {tab === "thresholds" && <ThresholdsForm key={version([settings.inventoryAging, settings.repairOverdueDays, settings.uncontactedLeadHours])} settings={settings} />}
     {tab === "garages" && <GaragesAdmin garages={await listGarages()} repairTypes={settings.repairTypes} primaryColor={settings.brand.primaryColor} />}
-    {tab === "templates" && <TemplatesAdmin templates={await listEmailTemplates()} />}
+    {tab === "templates" && <TemplatesAdmin templates={await listEmailTemplates()} brand={settings.brand} />}
   </>;
 }

@@ -31,28 +31,28 @@ export function StatCard({ label, value, format = "number", href, icon: Icon, hi
   const display = typeof value === "number" ? formatValue(value, format, true) : value;
   const DeltaIcon = delta?.direction === "up" ? ArrowUpRight : delta?.direction === "down" ? ArrowDownRight : ArrowRight;
   const body = <>
-    <span className="flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground">
-      <span className="flex min-w-0 items-center gap-1.5">
-        {color && <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />}
-        <span className="truncate">{label}</span>
+    <span className="flex items-start justify-between gap-3">
+      <span className="flex min-w-0 items-center gap-2 pt-1 text-[0.8125rem] font-medium text-muted-foreground">
+        {color && <span aria-hidden className="size-2.5 shrink-0 rounded-full ring-4" style={{ backgroundColor: color, "--tw-ring-color": `color-mix(in oklab, ${color} 18%, transparent)` } as React.CSSProperties} />}
+        <span className="line-clamp-2 sm:truncate">{label}</span>
       </span>
-      {Icon && <Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" />}
+      {Icon && <span aria-hidden className="hidden size-9 shrink-0 sm:flex items-center justify-center rounded-xl bg-muted text-foreground/70 transition-colors group-hover/stat:bg-brand-soft group-hover/stat:text-primary"><Icon className="size-[1.125rem]" /></span>}
     </span>
-    <span className="mt-2 block truncate text-2xl font-semibold tracking-tight tabular-nums sm:text-[1.75rem]">{display}</span>
-    {(delta || hint) && <span className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+    <span className="font-display mt-3 block truncate text-[1.75rem] leading-none font-semibold tabular-nums sm:text-[2rem]">{display}</span>
+    {(delta || hint) && <span className="mt-2.5 flex min-w-0 flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
       {delta && <span className={cn("inline-flex items-center gap-0.5 font-medium", delta.direction === "flat" ? "text-muted-foreground" : delta.good ? "text-success" : "text-danger")}>
         <DeltaIcon aria-hidden className="size-3.5" />{delta.label}{delta.period && <span className="font-normal text-muted-foreground">&nbsp;{delta.period}</span>}
       </span>}
       {hint && <span className="truncate">{hint}</span>}
     </span>}
   </>;
-  const classes = cn("block min-w-0 rounded-xl border bg-card p-4 shadow-xs", className);
+  const classes = cn("group/stat block min-w-0 rounded-2xl border bg-card p-5 shadow-xs", className);
   return href
-    ? <Link href={href} className={cn(classes, "transition-colors hover:border-foreground/20 hover:bg-muted/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring")}>{body}</Link>
+    ? <Link href={href} className={cn(classes, "transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:border-foreground/15 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring")}>{body}</Link>
     : <div className={classes}>{body}</div>;
 }
 
 /** Responsive KPI row: two per row on phones, widening with the screen. */
 export function KpiRow({ children, className, label }: { children: React.ReactNode; className?: string; label?: string }) {
-  return <section aria-label={label} className={cn("grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4", className)}>{children}</section>;
+  return <section aria-label={label} className={cn("grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 2xl:grid-cols-6", className)}>{children}</section>;
 }

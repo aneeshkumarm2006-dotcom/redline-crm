@@ -8,7 +8,8 @@ import { getDealershipForAutomation } from "@/modules/dealerships/service";
 import { getEmailTemplate } from "@/modules/email-templates/service";
 import { getGarageForAutomation } from "@/modules/garages/service";
 import { getInventoryAttention, getVehicleForAutomation, listReminderVehiclesForAutomation } from "@/modules/inventory/service";
-import { getLeadForAutomation, listLeadQueues, listUncontactedLeadsForAutomation } from "@/modules/leads/service";
+import { getLeadForAutomation, listLeadQueues, listUncontactedLeadsForAutomation, listUnbookedLeadIdsForAutomation } from "@/modules/leads/service";
+import { emailUrl } from "@/lib/email/url";
 import { notifyUsers } from "@/modules/notifications/service";
 import { getSettings } from "@/modules/settings/service";
 import { findActiveUser, listAutomationStaff } from "@/modules/users/service";
@@ -140,6 +141,41 @@ export async function runScheduledAutomations(now = Date.now()): Promise<Schedul
     }
   }
 
+  /**
+   * Customers who enquired but have not booked get follow-up emails on the configured days (e.g. day 2 and day 5).
+   * Keys are per lead and step (`follow-up:<leadId>:<step>`), never per day, so each step goes out once. If a run was
+   * missed and several steps are due, only the latest is sent and the earlier ones are recorded as skipped.
+   */
+  async function customerFollowUps() {
+    if (!on("lead_customer_follow_up")) return;
+    const days = settings.customerFollowUpDays;
+    const leads = await listUnbookedLeadIdsForAutomation(new Date(now - days[0] * DAY).toISOString());
+    for (const { id, createdAt } of leads) {
+      const age = Math.floor((now - Date.parse(createdAt)) / DAY);
+      const due = days.flatMap((day, index) => day <= age ? [index] : []);
+      if (!due.length) continue;
+      const latest = due.at(-1)!;
+      for (const index of due.slice(0, -1)) {
+        await claimAutomationRun({ eventId: `follow-up:${id}:${index + 1}`, recipeKey: "lead_customer_follow_up", name: "schedule",
+          subject: { type: "lead", id }, outcome: "skipped", detail: runDetails.followUpSuperseded, ranAt });
+      }
+      await fire("lead_customer_follow_up", `follow-up:${id}:${latest + 1}`, { type: "lead", id }, async () => {
+        const lead = await getLeadForAutomation(id);
+        const final = latest === days.length - 1;
+        const [vehicle, dealership, template, assigned] = await Promise.all([getVehicleForAutomation(lead.vehicleId), getDealershipForAutomation(lead.dealershipId),
+          getEmailTemplate(final ? "follow_up_3" : "follow_up_2"), lead.assignedTo ? findActiveUser(lead.assignedTo) : null]);
+        const content = renderEmailTemplate(template, { companyName: settings.brand.companyName, customerName: lead.name, vehicleName: vehicleName(vehicle),
+          stockNo: vehicle.stockNo, dealershipName: dealership.name, dealershipAddress: dealership.address, dealershipPhone: dealership.phone,
+          salespersonName: assigned?.name ?? settings.brand.companyName, bookingUrl: emailUrl(`/book/${encodeURIComponent(lead.bookingToken)}`) });
+        try {
+          await sendLoggedEmail({ from: senderAddress(settings.emailFrom), to: [lead.email], ...content },
+            { templateKey: final ? "follow_up_3" : "follow_up_2", leadId: lead.id, vehicleId: vehicle.id });
+        } catch { return { outcome: "failed", detail: runDetails.followUpFailed }; }
+        return { outcome: "success", detail: runDetails.followUp(latest + 1, days.length, lead.email, days[latest]) };
+      });
+    }
+  }
+
   async function morningAlerts() {
     if (!on("appointment_morning_alert")) return;
     const appointments = await listBookedAppointmentsForAutomation(new Date(todayStart).toISOString(), new Date(tomorrowStart).toISOString());
@@ -159,9 +195,9 @@ export async function runScheduledAutomations(now = Date.now()): Promise<Schedul
   }
 
   // Independent recipes run side by side; each one's failure is contained to its own reminders.
-  const results = await Promise.allSettled([agingAndRepairs(), uncontacted(), customerReminders(), morningAlerts()]);
+  const results = await Promise.allSettled([agingAndRepairs(), uncontacted(), customerReminders(), customerFollowUps(), morningAlerts()]);
   if (results.some((result) => result.status === "rejected")) console.error("A scheduled recipe could not run.", { date });
-  for (const key of ["aging_inventory_reminder", "repair_overdue_reminder", "uncontacted_lead_reminder", "appointment_customer_reminder", "appointment_morning_alert"] as const) tally(key);
+  for (const key of ["aging_inventory_reminder", "repair_overdue_reminder", "uncontacted_lead_reminder", "appointment_customer_reminder", "lead_customer_follow_up", "appointment_morning_alert"] as const) tally(key);
   return { ranAt, recipes: [...tallies.values()] };
 }
 

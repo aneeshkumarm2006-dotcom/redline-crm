@@ -26,6 +26,8 @@ Keep these variables in `site/.env.local`, never in source control:
 | `RESEND_API_KEY` | Resend API key when real email delivery is enabled; may be empty during setup. |
 | `APP_URL` | `http://localhost:3000` locally; the app's public origin when deployed. |
 | `CRON_SECRET` | Random secret protecting `/api/cron` (scheduled reminders); Vercel Cron sends it as `Authorization: Bearer <CRON_SECRET>`. |
+| `AUTOMATION_INTERVAL_MINUTES` | Optional. Minutes between in-process reminder runs on a long-running server (default 15 in development, off in production, where Vercel Cron calls `/api/cron`). `0` disables. Runs are idempotent, so it is safe alongside the cron. |
+| `EMAIL_PROVIDER=smtp` + `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` (`SMTP_FROM`, `EMAIL_REPLY_TO` optional) | Send through any SMTP account, e.g. Gmail with an app password (`smtp.gmail.com`, port 465). Mail goes out as the SMTP account with the Settings company name as the display name. Reserved demo domains (`example.com`, `*.example`, `*.test`, `*.invalid`) are never sent, only logged. |
 
 Generate an auth secret locally:
 
