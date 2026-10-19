@@ -17,7 +17,7 @@ http://localhost:3000/login for staff access. `/` redirects to public inventory.
 
 ## Environment
 
-Keep these four variables in `site/.env.local`, never in source control:
+Keep these variables in `site/.env.local`, never in source control:
 
 | Variable | Value |
 | --- | --- |
@@ -25,6 +25,7 @@ Keep these four variables in `site/.env.local`, never in source control:
 | `AUTH_SECRET` | Random secret, at least 32 bytes, for session signing. |
 | `RESEND_API_KEY` | Resend API key when real email delivery is enabled; may be empty during setup. |
 | `APP_URL` | `http://localhost:3000` locally; the app's public origin when deployed. |
+| `CRON_SECRET` | Random secret protecting `/api/cron` (scheduled reminders); Vercel Cron sends it as `Authorization: Bearer <CRON_SECRET>`. |
 
 Generate an auth secret locally:
 
@@ -246,8 +247,10 @@ components. The root layout mounts Sonner's toaster. Add components with
 
 ## Public inventory and inquiries (Stage 7)
 
-Customers can browse `/inventory`, filter by dealership, and open
-`/inventory/[id]` without signing in. Vehicle pages show supplied photos (with
+Customers can browse `/inventory` (hero with the locations, location chips,
+cards with "New arrival" / "Price drop" badges), and open `/inventory/[id]`
+(gallery, key specs, trust strip, sticky Test drive / Inquire bar on phones)
+without signing in. A `utm_source` on any public URL is saved on the inquiry. Vehicle pages show supplied photos (with
 an empty/broken-image fallback), CAD price, km mileage, specifications and
 location contact details. The demo seed gives each vehicle three photos of the
 same model from Wikimedia Commons (stock images, not the actual units; licences
@@ -383,8 +386,11 @@ print "a.m.." after the time; a full `npm run seed` installs the corrected wordi
   customer, change the stage, add a note, see the vehicle, appointment and activity.
   The owner can reassign to an active salesperson at the same location.
 - **Appointments** (`/crm/leads/appointments`): today and upcoming booked visits.
-- **Dashboard** (`/crm`): new leads today, appointments today, stock per status
-  (tap a status to filter inventory), today's appointments and recent activity.
+- **Dashboard** (`/crm`): for the owner, the Command Center (KPIs, units by status,
+  Needs attention, team leaderboard, sales by month, lead funnel, aging buckets,
+  inventory by location, today's appointments, recent activity) with a location
+  filter. Salespeople see their open leads, today's appointments, sales and
+  commission against target, reminders and activity. Every tile opens its board.
 - **Alerts** (`/crm/alerts` and the header bell): unread count, mark one/all read.
   The bell checks every 20 seconds and toasts new alerts.
 - **Home screen**: open `/crm` on a phone and use "Add to Home Screen" (iOS Share
@@ -394,3 +400,22 @@ No new environment variables or reseed are needed. Unit tests cover lead
 visibility, stage/reassign/note rules and alert ownership (`tests/leads-crm.test.ts`).
 The existing `auth:check` and `inventory:check` cover the new header and the
 collapsible filters.
+
+
+## Extras (v2 Stage 9)
+
+- **Week calendar:** Leads → Appointments → Week. Use the arrows to change weeks. Owners can filter
+  by location and salesperson.
+- **Settings** (owner, More → Settings):
+  - branding
+  - vehicle statuses and their workflow roles, and which statuses are public
+  - repair types, lead stages and stage roles, lead sources
+  - reminder thresholds, garages, email templates
+
+  Entries still in use can't be removed.
+- **CSV export:** an Export CSV button on every board (inventory, team, garages, salesperson
+  profile) and on Leads (`/crm/leads/export`, using the current filters).
+- **Saved views:** on Inventory and Leads, apply filters, then tap **Save view**. Views are personal
+  and are cleared by `npm run seed`.
+- **Drag and drop:** on desktop, drag a lead card to another pipeline column. Tapping a card still
+  works everywhere.

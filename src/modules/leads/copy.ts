@@ -7,7 +7,7 @@ export const inquiryCopy = {
   invalid: "Please check your details and try again.", error: "Unable to send your inquiry. Please try again.",
   unavailable: "This vehicle is no longer available for inquiries. Please browse our current inventory.",
   reused: "Please reload the page before sending a different inquiry.",
-  activity: "Customer submitted a vehicle inquiry.",
+  activity: "Customer submitted a vehicle inquiry.", activityVia: (campaign: string) => `Customer submitted a vehicle inquiry (campaign: ${campaign}).`,
 } as const;
 
 export const leadsCopy = {
@@ -22,7 +22,7 @@ export const leadsCopy = {
   loading: "Loading leads…", error: "Leads could not be loaded.", retry: "Try again",
   contact: "Customer", call: "Call", email: "Email", message: "Inquiry message", noMessage: "No message included.",
   vehicleCard: "Vehicle of interest", viewVehicle: "View vehicle", unknownVehicle: "Vehicle unavailable",
-  details: "Lead details", source: "Source", sources: { public_inventory: "Website inquiry", website: "Website", phone: "Phone", walk_in: "Walk-in" } as Record<string, string>,
+  details: "Lead details", source: "Source", sourceVia: (source: string, campaign: string) => `${source} · ${campaign}`,
   appointment: "Appointment", noAppointment: "No appointment booked yet.",
   changeStage: "Change stage", stageHint: "Tap a stage to save it immediately.", current: "Current",
   reassign: "Reassign", reassignHint: "Only active salespeople at this lead’s location are listed.", noSalespeople: "No active salespeople at this location.",
@@ -34,7 +34,40 @@ export const leadsCopy = {
   savedWithWarning: "Saved, but a follow-up notification could not be delivered.",
   networkError: "Unable to save. Check your connection and try again.", ownerOnly: "Owner access is required. Sign in again if your session expired.",
   genericError: "Unable to save the lead. Please try again.", unknownStaff: "Former staff member", unknownDealership: "Unknown dealership",
+  // Board / list
+  views: { board: "Board", list: "List" }, viewLabel: "View", allSources: "All sources",
+  newLead: "New lead", pipeline: "Lead pipeline", jumpTo: "Jump to stage",
+  emptyColumn: "No leads", moreInColumn: (count: number) => `+${count} more in the list`,
+  truncated: (shown: number, total: number) => `Showing the newest ${shown} of ${total} leads. Narrow the filters to see the rest.`,
+  nextAppointment: "Next appointment", noAssignee: "Unassigned", moveStage: "Move stage", moveHint: "Tap a stage to move this lead.", openLead: "Open lead",
+  // Lead detail
+  detailTabs: { overview: "Overview", emails: "Emails", activity: "Activity" }, tabsLabel: "Lead sections",
+  quickActions: "Quick actions",
+  logCall: "Log call", logCallHint: "Record a call with the customer. The first call or email marks the lead as contacted.",
+  callNote: "What happened? (optional)", callNotePlaceholder: "Talked about financing, coming in Saturday…",
+  advanceStage: (label: string) => `Move to ${label}`, saveCall: "Save call", callSaved: "Call logged.",
+  callLogged: "Call logged.", callSavedStageStale: "Call logged, but the lead changed stage meanwhile, so it was not moved.",
+  emailLogged: (subject: string) => `Email sent: ${subject}`,
+  emailsTitle: "Emails to and about this customer", noEmails: "No emails logged for this lead yet.",
+  emailTo: (to: string) => `To ${to}`, emailFailed: "Not delivered", emailSent: "Sent", preview: "Show email", previewTitle: (subject: string) => `Email preview: ${subject}`,
+  // Staff-entered lead
+  newLeadTitle: "New lead", newLeadIntro: "Log a phone call, walk-in or referral. It follows the same automations as a website inquiry.",
+  customerSection: "Customer", leadSection: "Lead", name: "Full name", emailField: "Email", phone: "Phone", note: "Notes (optional)",
+  vehicleField: "Vehicle of interest", chooseVehicle: "Choose a vehicle", sourceField: "Source", chooseSource: "Choose a source",
+  assigneeField: "Salesperson", autoAssign: "Assign automatically (round-robin)", assigneeMine: "You (leads you enter stay with you)",
+  contacted: "I’ve already spoken with this customer", contactedHint: "Marks the lead as contacted, so it stays out of the follow-up queue.",
+  createLead: "Create lead", creating: "Creating…", created: "Lead created.", cancel: "Cancel",
+  noVehicles: "There are no cars you can log a lead for right now.",
+  staffCreated: (source: string) => `Lead entered by staff (${source}).`,
+  assignedActivity: (name: string) => `Lead assigned to ${name}.`,
+  unknownSource: "Choose a configured lead source.",
+  vehicleUnavailable: "That vehicle is sold or no longer in inventory. Choose another.",
+  otherLocation: "Choose a car at your location. Leads you enter are assigned to you.",
   results: (count: number) => `${count} lead${count === 1 ? "" : "s"}`,
+  exportCsv: "Export CSV",
+  dragHint: "Drag a card to another column to change its stage, or tap it for options.", movedTo: (name: string, stage: string) => `${name} moved to ${stage}.`,
+  csv: { received: "Received", customer: "Customer", email: "Email", phone: "Phone", stage: "Stage", source: "Source", campaign: "Campaign",
+    vehicle: "Vehicle", stockNo: "Stock #", location: "Location", salesperson: "Salesperson" },
   page: (page: number, total: number) => `Page ${page} of ${total}`,
 } as const;
 

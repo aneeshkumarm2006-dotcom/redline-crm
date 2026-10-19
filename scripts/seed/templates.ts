@@ -20,6 +20,10 @@ export const demoEmailTemplates = [
     body: '<p>Hi {{customerName}},</p><p>Your appointment to see {{vehicleName}} is confirmed:</p><p><strong>{{appointmentTime}}</strong></p><p>{{salespersonName}} will meet you at {{dealershipAddress}}. Call {{dealershipPhone}} if your plans change.</p><p>{{companyName}}</p>',
   },
   {
+    key: "appointment_reminder", subject: "Reminder: your appointment at {{dealershipName}}",
+    body: '<p>Hi {{customerName}},</p><p>This is a reminder of your appointment to see {{vehicleName}}:</p><p><strong>{{appointmentTime}}</strong></p><p>We are at {{dealershipAddress}}. Call {{dealershipPhone}} if you need to reschedule.</p><p>{{companyName}}</p>',
+  },
+  {
     key: "new_lead", subject: "New lead: {{customerName}} — {{vehicleName}}",
     body: '<p>Hi {{salespersonName}},</p><p>{{customerName}} has asked about {{vehicleName}} at {{dealershipName}}.</p><p>{{customerMessage}}</p><p><a href="{{leadUrl}}">Open the lead</a></p>',
   },

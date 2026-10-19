@@ -1,11 +1,9 @@
 import "server-only";
 import { on } from "@/lib/events";
 import { eventNames, type DomainEvent } from "@/lib/event-contract";
-import { dispatchNotifications, recordEventActivity } from "./service";
+import { recordEventActivity } from "./service";
 
+/** The audit trail on every lead and vehicle. Alert and email delivery are recipes, registered in `lib/automation.ts`. */
 export function registerNotificationHandlers() {
-  return eventNames.flatMap((name) => [
-    on(name, "notifications:dispatch", (event) => dispatchNotifications(event as DomainEvent)),
-    on(name, "notifications:activity", (event) => recordEventActivity(event as DomainEvent)),
-  ]);
+  return eventNames.map((name) => on(name, "notifications:activity", (event) => recordEventActivity(event as DomainEvent)));
 }

@@ -2,7 +2,9 @@ import "server-only";
 
 import { connectDb } from "@/lib/db";
 import { SETTINGS_ID, SettingsModel } from "./model";
-import { settingsSchema, type Settings } from "./schema";
+import { settingsReferenceProblems, settingsSchema, type Settings } from "./schema";
+import { requireRole } from "@/modules/auth/service";
+import { recipeToggleSchema } from "@/modules/automations/schema";
 
 const CACHE_MS = 60_000;
 type SettingsCache = { value?: Settings; expiresAt: number; revision: number; pending?: Promise<Settings> };
@@ -41,6 +43,33 @@ export async function getSettings(): Promise<Settings> {
   const pending = cache.pending;
   try { return structuredClone(await pending); }
   finally { if (cache.pending === pending) cache.pending = undefined; }
+}
+
+/** Owner: turns one automation recipe on or off. Takes effect at once in this process; other instances within the cache TTL. */
+export async function setAutomationEnabled(input: unknown) {
+  await requireRole("owner");
+  const { key, enabled } = recipeToggleSchema.parse(input);
+  await connectDb();
+  const result = await SettingsModel.updateOne({ _id: SETTINGS_ID }, { $set: { [`automations.${key}`]: enabled } }, { runValidators: true }).exec();
+  if (!result.matchedCount) throw new Error("Settings are missing. Run npm run seed:settings.");
+  invalidateSettingsCache();
+}
+
+export class SettingsError extends Error {}
+
+/**
+ * Owner: replaces the whole configuration after validating it and its cross-references (status roles, won/lost/
+ * appointment stages, public statuses and inquiry source). Callers check that removed keys are unused first.
+ */
+export async function replaceSettings(input: unknown) {
+  await requireRole("owner");
+  const settings = settingsSchema.parse(input);
+  const problems = settingsReferenceProblems(settings);
+  if (problems.length) throw new SettingsError(problems.join(" "));
+  await connectDb();
+  const result = await SettingsModel.updateOne({ _id: SETTINGS_ID }, { $set: settings }, { runValidators: true }).exec();
+  if (!result.matchedCount) throw new Error("Settings are missing. Run npm run seed:settings.");
+  invalidateSettingsCache();
 }
 
 /** CLI bootstrap only. Insert if absent; never overwrite existing client configuration. */

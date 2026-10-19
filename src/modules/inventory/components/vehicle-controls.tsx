@@ -24,6 +24,8 @@ export function VehicleControls({ vehicle, settings, price = false }: { vehicle:
       try {
         const ref = { id: vehicle.id, revision: vehicle.revision };
         const result = await (price ? changePriceAction({ ...ref, price: Number(value) }) : changeStatusAction({ ...ref, status: value }));
+        // Repair and sale statuses open their own sheet on this page instead.
+        if (!result.ok && result.workflow) { toast.info(result.message); setOpen(false); router.push(`/crm/inventory/${vehicle.id}?action=${result.workflow}`, { scroll: false }); return; }
         if (!result.ok) { setError(result.message); router.refresh(); return; }
         if (result.warning) toast.warning(result.warning); else toast.success(price ? copy.priceSaved : copy.statusSaved);
         setOpen(false);

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   icons: { apple: "/app-icon/180" }, appleWebApp: { capable: true, title: shellCopy.workspace, statusBarStyle: "default" },
 };
 export default function CrmLayout({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<div className="lg:pl-64"><div className="mx-auto w-full max-w-6xl px-4 pt-7 sm:px-8"><ScreenSkeleton label={shellCopy.loading} tiles={2} rows={3} /></div></div>}>
+  return <Suspense fallback={<div className="min-h-dvh bg-surface lg:pl-60"><div className="mx-auto w-full max-w-7xl px-4 pt-6 sm:px-6 lg:px-8"><ScreenSkeleton label={shellCopy.loading} tiles={2} rows={3} /></div></div>}>
     <AppShell>{children}</AppShell>
   </Suspense>;
 }

@@ -35,7 +35,8 @@ export function localDate(instant: number, timeZone: string) {
   return `${p.year}-${String(p.month).padStart(2, "0")}-${String(p.day).padStart(2, "0")}`;
 }
 
-function addDays(date: string, days: number) {
+/** Calendar date `days` after a `YYYY-MM-DD` date (negative goes back). */
+export function addDays(date: string, days: number) {
   const [year, month, day] = date.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, day) + days * DAY).toISOString().slice(0, 10);
 }
@@ -76,4 +77,35 @@ export function buildSlotDays(booking: Settings["booking"], now: Date, booked: I
 /** UTC instant of local midnight for the calendar day containing `instant` in a zone. */
 export function startOfLocalDay(instant: number, timeZone: string) {
   return zonedTimeToUtc(localDate(instant, timeZone), "00:00", timeZone);
+}
+
+/** UTC instant of local midnight on the first day of the month containing `instant` in a zone. */
+export function startOfLocalMonth(instant: number, timeZone: string) {
+  return zonedTimeToUtc(`${localDate(instant, timeZone).slice(0, 8)}01`, "00:00", timeZone);
+}
+
+/** Local Monday-to-Monday week containing `instant`, as UTC instants. */
+export function localWeek(instant: number, timeZone: string) {
+  const today = localDate(instant, timeZone);
+  const monday = addDays(today, -weekdays.indexOf(weekday(today)));
+  return { start: zonedTimeToUtc(monday, "00:00", timeZone), end: zonedTimeToUtc(addDays(monday, 7), "00:00", timeZone) };
+}
+
+export type LocalMonth = { key: string; start: number; end: number };
+/** A calendar month (`YYYY-MM`) in a zone as UTC instants, or null for a malformed key. */
+export function localMonth(key: string, timeZone: string): LocalMonth | null {
+  const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(key);
+  if (!match) return null;
+  const [year, month] = [Number(match[1]), Number(match[2])];
+  const next = month === 12 ? `${year + 1}-01` : `${year}-${String(month + 1).padStart(2, "0")}`;
+  return { key, start: zonedTimeToUtc(`${key}-01`, "00:00", timeZone), end: zonedTimeToUtc(`${next}-01`, "00:00", timeZone) };
+}
+
+/** The `count` calendar months ending with the one containing `instant`, oldest first. */
+export function recentLocalMonths(instant: number, timeZone: string, count: number): LocalMonth[] {
+  const [year, month] = localDate(instant, timeZone).split("-").map(Number);
+  return Array.from({ length: count }, (_, index) => {
+    const offset = year * 12 + (month - 1) - (count - 1 - index);
+    return localMonth(`${Math.floor(offset / 12)}-${String((offset % 12) + 1).padStart(2, "0")}`, timeZone)!;
+  });
 }

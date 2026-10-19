@@ -16,7 +16,8 @@ const schema = new Schema({
   vehicleId: { type: Schema.Types.ObjectId, ref: "Vehicle", required: true },
   dealershipId: { type: Schema.Types.ObjectId, ref: "Dealership", required: true },
   assignedTo: { type: Schema.Types.ObjectId, ref: "User", default: null },
-  stage: { type: String, required: true }, source: { type: String, required: true },
+  stage: { type: String, required: true }, source: { type: String, required: true }, utmSource: { type: String, trim: true },
+  firstContactedAt: { type: Date, default: null },
   bookingToken: { type: String, required: true, unique: true, select: false },
   inquiryId: { type: String, select: false },
   activity: { type: [activity], default: [] },
@@ -24,6 +25,8 @@ const schema = new Schema({
 schema.index({ assignedTo: 1, stage: 1, createdAt: -1 });
 schema.index({ dealershipId: 1, stage: 1, createdAt: -1 });
 schema.index({ vehicleId: 1 });
+// Uncontacted-lead reminders scan by stage and age.
+schema.index({ stage: 1, firstContactedAt: 1, createdAt: 1 });
 schema.index({ inquiryId: 1 }, { unique: true, sparse: true });
 schema.pre("validate", function () {
   // A normal query excludes the bearer token; validating a fetched document must

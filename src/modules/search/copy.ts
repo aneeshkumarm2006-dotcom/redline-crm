@@ -1,0 +1,16 @@
+export const searchCopy = {
+  open: "Search",
+  placeholder: "Search stock #, VIN, make, customer, phone…",
+  shortcut: "Ctrl K",
+  shortcutMac: "⌘K",
+  title: "Search the workspace",
+  description: "Vehicles, leads and staff you have access to.",
+  minimum: "Type at least 2 characters.",
+  searching: "Searching…",
+  none: (query: string) => `No matches for “${query}”.`,
+  error: "Search is unavailable right now. Try again.",
+  groups: { vehicles: "Vehicles", leads: "Leads", staff: "Staff" },
+  hint: "↑↓ to move · Enter to open · Esc to close",
+  escape: "Esc",
+  inactive: "Inactive",
+} as const;

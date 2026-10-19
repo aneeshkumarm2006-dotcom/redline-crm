@@ -9,7 +9,7 @@ export const authCopy = {
   loading: "Loading…", signOut: "Sign out", signingOut: "Signing out…",
   signOutFailed: "Could not sign out. Please try again.",
   workspace: "Your workspace", welcome: "You’re signed in and ready to work.",
-  team: "Team access", teamDescription: "Staff accounts and their current access.",
+  team: "Team",
   back: "Back to workspace", active: "Active", inactive: "Inactive",
   deniedTitle: "Owner access required", deniedDescription: "Your account does not have access to this page.",
   roles: { owner: "Owner", salesperson: "Salesperson" },

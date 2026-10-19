@@ -2,18 +2,22 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Bell, CalendarClock, CarFront, UserPlus } from "lucide-react";
+import { AlarmClock, BadgeDollarSign, Bell, CalendarClock, CarFront, Hourglass, PhoneMissed, UserPlus, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { StaffNotification } from "../service";
+import type { NotificationKind } from "../schema";
 import { markAllNotificationsReadAction, markNotificationReadAction } from "../actions";
 import { alertsCopy as copy } from "../copy";
 
 const icons: Record<string, typeof Bell> = {
   "lead.created": UserPlus, "lead.assigned": UserPlus, "lead.stage_changed": UserPlus,
   "appointment.booked": CalendarClock, "vehicle.status_changed": CarFront, "vehicle.price_changed": CarFront,
-};
+  "vehicle.repair_started": Wrench, "vehicle.repair_completed": Wrench, "vehicle.sold": BadgeDollarSign,
+  "reminder.aging_inventory": Hourglass, "reminder.repair_overdue": Wrench, "reminder.uncontacted_lead": PhoneMissed, "reminder.appointment_today": AlarmClock,
+} satisfies Record<NotificationKind, typeof Bell>;
 
-export function AlertsList({ notifications, times }: { notifications: StaffNotification[]; times: Record<string, string> }) {
+/** `summary: false` drops the unread count and Mark all read row (e.g. a short excerpt on the dashboard). */
+export function AlertsList({ notifications, times, summary = true }: { notifications: StaffNotification[]; times: Record<string, string>; summary?: boolean }) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const unread = notifications.filter((entry) => !entry.readAt).length;
@@ -30,10 +34,10 @@ export function AlertsList({ notifications, times }: { notifications: StaffNotif
     });
   }
   return <>
-    <div className="flex min-h-11 flex-wrap items-center justify-between gap-2">
+    {summary && <div className="flex min-h-11 flex-wrap items-center justify-between gap-2">
       <p className="text-sm text-muted-foreground">{copy.unreadCount(unread)}</p>
       {unread > 0 && <Button variant="outline" className="min-h-11" disabled={pending} onClick={markAll}>{pending ? copy.marking : copy.markAll}</Button>}
-    </div>
+    </div>}
     <ul className="divide-y rounded-xl border bg-card">{notifications.map((entry) => {
       const Icon = icons[entry.event] ?? Bell;
       return <li key={entry.id}>

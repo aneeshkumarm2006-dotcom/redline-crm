@@ -26,6 +26,15 @@ const settingsModelSchema = new Schema<SettingsDocument>({
     appointmentStageKey: { type: String, default: "appointment" },
   }, embedded), required: true },
   leadAssignmentStrategy: { type: String, enum: ["round_robin", "manual"], required: true },
+  repairTypes: { type: [status], default: undefined },
+  leadSources: { type: [status], default: undefined },
+  publicInquirySourceKey: String,
+  statusRoles: { type: new Schema({ available: String, repair: String, sold: String }, embedded) },
+  wonStageKey: String,
+  inventoryAging: { type: new Schema({ warnDays: Number, criticalDays: Number }, embedded) },
+  repairOverdueDays: Number,
+  uncontactedLeadHours: Number,
+  automations: { type: Map, of: Boolean, default: undefined },
   notificationRules: [new Schema({ event: String, recipients: [String], channels: [String] }, embedded)],
 }, { timestamps: true, strict: "throw", collection: "settings" });
 

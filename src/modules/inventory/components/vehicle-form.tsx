@@ -22,7 +22,10 @@ export function VehicleForm({ vehicle, dealerships, settings, today }: { vehicle
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const data = Object.fromEntries(form);
+    // Blank cost/commission keep the stored value (or the default for a new car).
+    const optional = (value: FormDataEntryValue | undefined) => value === undefined || value === "" ? undefined : Number(value);
     const parsed = vehicleFormSchema.safeParse({ ...data, year: Number(data.year), mileage: Number(data.mileage), price: Number(data.price),
+      acquisitionCost: optional(data.acquisitionCost), commission: optional(data.commission),
       dateInStock: `${data.dateInStock}T00:00:00.000Z`, photos: String(data.photos).split(/\r?\n/).map((url) => url.trim()).filter(Boolean) });
     setFields({}); setError("");
     if (!parsed.success) {
@@ -38,14 +41,16 @@ export function VehicleForm({ vehicle, dealerships, settings, today }: { vehicle
     });
   }}>
     <fieldset disabled={pending} className="grid min-w-0 gap-5 sm:grid-cols-2">
-      {(["stockNo", "vin", "year", "make", "model", "trim", "mileage", "price", "dateInStock"] as const).map((field) => {
-        const numeric = ["year", "mileage", "price"].includes(field);
+      {(["stockNo", "vin", "year", "make", "model", "trim", "mileage", "price", "acquisitionCost", "commission", "dateInStock"] as const).map((field) => {
+        const money = ["price", "acquisitionCost", "commission"].includes(field);
+        const numeric = money || ["year", "mileage"].includes(field);
         return <label key={field} className="min-w-0 space-y-2"><span className="text-sm font-medium">{copy.fields[field]}</span>
-          <Input name={field} type={field === "dateInStock" ? "date" : numeric ? "number" : "text"} required={field !== "trim"}
+          <Input name={field} type={field === "dateInStock" ? "date" : numeric ? "number" : "text"} required={!["trim", "acquisitionCost", "commission"].includes(field)}
             defaultValue={field === "dateInStock" ? vehicle?.dateInStock.slice(0, 10) ?? today : vehicle?.[field] ?? ""}
-            min={field === "year" ? 1886 : numeric ? 0 : undefined} max={field === "year" ? 2100 : field === "mileage" ? 10000000 : field === "price" ? 100000000 : undefined}
-            step={field === "price" ? "0.01" : numeric ? "1" : undefined} maxLength={field === "vin" ? 17 : field === "stockNo" ? 40 : 120}
+            min={field === "year" ? 1886 : numeric ? 0 : undefined} max={field === "year" ? 2100 : field === "mileage" ? 10000000 : money ? 100000000 : undefined}
+            step={money ? "0.01" : numeric ? "1" : undefined} maxLength={field === "vin" ? 17 : field === "stockNo" ? 40 : 120}
             className="min-h-11 text-base" aria-invalid={!!fields[field]} aria-describedby={fields[field] ? `error-${field}` : undefined} />
+          {field === "acquisitionCost" && <span className="block text-xs text-muted-foreground">{copy.costHint}</span>}
           {fields[field] && <span id={`error-${field}`} className="block text-sm text-destructive">{fields[field]}</span>}
         </label>;
       })}

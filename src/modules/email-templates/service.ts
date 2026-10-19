@@ -4,7 +4,8 @@ import { connectDb } from "@/lib/db";
 import { EmailTemplateModel } from "./model";
 import { emailTemplateSchema } from "./schema";
 import { keySchema } from "@/lib/data-schema";
-import { emailTemplateInputSchema } from "./schema";
+import { allowedPlaceholders, emailTemplateInputSchema, emailTemplateUpdateSchema, placeholdersIn } from "./schema";
+import { requireRole } from "@/modules/auth/service";
 
 /** Non-destructive CLI upgrade for existing databases. Never replaces edited templates. */
 export async function initializeEmailTemplates(input: unknown) {
@@ -42,3 +43,27 @@ export async function replaceEmailTemplatesForSeed(input: unknown) {
   return documents.length;
 }
 
+
+export class EmailTemplateError extends Error {}
+
+/** Owner settings screen: every template, by key. */
+export async function listEmailTemplates() {
+  await requireRole("owner");
+  await connectDb();
+  const documents = await EmailTemplateModel.find().sort({ key: 1 }).lean().exec();
+  return documents.map((document) => emailTemplateSchema.parse({ id: document._id.toString(), key: document.key, subject: document.subject, body: document.body }));
+}
+
+/** Owner: edits a template's subject and body. The key is fixed, because workflows send templates by key. */
+export async function updateEmailTemplate(input: unknown) {
+  await requireRole("owner");
+  const data = emailTemplateUpdateSchema.parse(input);
+  await connectDb();
+  const stored = await EmailTemplateModel.findById(data.id).select("subject body").lean().exec();
+  if (!stored) throw new EmailTemplateError("That template no longer exists.");
+  const allowed = new Set(allowedPlaceholders(stored));
+  const unknown = placeholdersIn(`${data.subject} ${data.body}`).filter((name) => !allowed.has(name));
+  if (unknown.length) throw new EmailTemplateError(`This template can’t use ${unknown.map((name) => `{{${name}}}`).join(", ")}. Use one of the listed placeholders.`);
+  const result = await EmailTemplateModel.updateOne({ _id: data.id }, { $set: { subject: data.subject, body: data.body } }, { runValidators: true }).exec();
+  if (!result.matchedCount) throw new EmailTemplateError("That template no longer exists.");
+}

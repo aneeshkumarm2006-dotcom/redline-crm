@@ -304,16 +304,48 @@ between insert and emission or a failed handler has no durable replay. Stage 8
 must register handlers and decide on delivery retries/outbox behavior. No emails,
 assignment or appointment workflow is introduced here.
 
+**v2 polish (Stage 8 of the v2 plan):** `/inventory` has a hero (brand, location
+cards with address, phone and live counts from `countPublicVehiclesByDealership`)
+and location chips instead of the select form. Public listings
+(`listPublicVehicles`, `getPublicVehicle`) now return `PublicListing`: the public DTO
+plus a server-derived `badge` (`price_drop` when the last price change was a cut
+within 30 days, else `new_arrival` within 14 days of acquisition). Acquisition date
+and price history are read to derive it but never leave the service. The vehicle
+page has a client gallery (arrows, swipe, thumbnails), a key-specs grid, a trust
+strip (fictional copy in `public-copy.ts`) and, on phones, a sticky price + Test
+drive / Inquire bar that hides while the form is visible. `?intent=test-drive`
+re-keys the form with a test-drive title and pre-filled message.
+
+Inquiries still record `settings.publicInquirySourceKey` (default `website`). They
+also carry an optional `utmSource`: `UtmCapture` (in the public shell) stores a
+landing `utm_source` in sessionStorage for the tab, the form sends it, and the lead
+stores it (schema `nullish`, so older leads validate). It shows on the lead detail
+as "Website · facebook" and in the creation activity.
+
 ## Lead automation (Stage 8)
 
-`registerAutomation()` (`lib/automation.ts`) wires two modules to the bus; Next
-calls it once per Node process from `instrumentation.ts`:
+`registerAutomation()` (`lib/automation.ts`) wires the handlers to the bus; Next
+calls it once per Node process from `instrumentation.ts`. Since v2 Stage 6 most
+handlers are **recipes**, registered with `onRecipe(event, recipeKey, handler)`:
+a recipe runs only while `Settings.automations[recipeKey]` is not `false`, and
+every outcome (`success`, `skipped`, `failed`) is written to `automation_runs`,
+one run per (event ID, recipe). Delivery for each event's `notificationRules` is
+split by audience (customer vs staff) so each half belongs to one recipe:
 
 | Key | Event(s) | Does |
 | --- | --- | --- |
-| `leads:assign` | `lead.created` | Applies `leadAssignmentStrategy`; round-robin emits `lead.assigned`. |
-| `notifications:dispatch` | all six | Resolves `notificationRules` to recipients and channels, then delivers. |
+| `recipe:lead_auto_assign` | `lead.created` | Applies `leadAssignmentStrategy`; round-robin emits `lead.assigned`. |
+| `recipe:lead_follow_up_email` | `lead.created` | Emails the customer, unless staff already spoke with them. |
+| `recipe:<alert recipe>` | the other events | Customer or staff half of `notificationRules` (see `alertRecipes`). |
+| `recipe:appointment_stage_update` | `appointment.booked` | Moves the lead to `booking.appointmentStageKey`. |
+| `notifications:<audience>` | events without a recipe for that audience | Plain rule delivery, not listed on the Automations page. |
 | `notifications:activity` | all except `lead.created` | Appends a readable entry to the lead's or vehicle's `activity[]`. |
+| `leads:won` | `vehicle.sold` | Moves the linked lead to the won stage. |
+
+Scheduled reminders live in `modules/automations/reminders.ts`
+(`runScheduledAutomations(now)`), triggered by `/api/cron` (`CRON_SECRET`) or the
+owner's **Run now**. Each reminder claims a deterministic run key first, so
+repeats on the same day send nothing.
 
 Round-robin uses an atomic per-dealership counter (`lead_assignment_cursors`)
 over active salespeople at the vehicle's location, ordered by ID, so concurrent
@@ -419,6 +451,20 @@ count for every configured vehicle status (each tile links to the filtered
 inventory, so HOLD is not hardcoded), today's appointment list and the ten newest
 lead + vehicle activity entries. Counts follow the same role scopes.
 
+**v2 (Stage 7):** `modules/dashboard/service.ts` builds both dashboards from other
+services only (`inventory.listStockSnapshot`, `leads.countLeadsByStage` /
+`countLeadsSince`, `sales.getSalesSummary`, `automations.getNeedsAttention`,
+appointments and recent activity). The owner's Command Center takes
+`?dealershipId=` (unknown IDs fall back to all locations), which every read,
+including Needs attention, honours. Salespeople get their own figures
+(`getSalespersonDashboard`). Definitions: inventory value, average days and aging
+buckets cover unsold cars; Sold counts this month only (the board's rule); the lead
+funnel counts leads from the last 6 months at each open stage or further (lost
+leads count only as received), and conversion is won ÷ (won + lost) over the
+same window. Every tile and chart mark links to its filtered board; the inventory
+board gained `minDays`/`maxDays` (unsold, whole days in stock) and `soldBy` for
+those links, shown as removable chips.
+
 `notifications.service` exposes the signed-in user's own alerts only
 (`listMyNotifications`, `getUnreadSummary`, `markNotificationRead`,
 `markAllNotificationsRead`). The header bell shows the unread count; it polls a
@@ -439,3 +485,46 @@ CRM layout sets the Apple touch icon and web-app metadata. Both read settings pe
 request and fall back to neutral values if the database is unavailable. A
 configured `brand.logoUrl` is not used for home-screen icons yet. No service worker
 or offline mode is included.
+
+
+## Extras (v2 Stage 9)
+
+**Appointments week view.** `/crm/leads/appointments?view=week&week=YYYY-MM-DD` shows Monday to
+Sunday in the settings time zone (`localWeek`, and `addDays` is now exported from `slots.ts`). It
+reads `listAppointmentsBetween` (booked + completed), so salespeople only get their own calendar.
+Owners can add `&dealershipId=` and `&salespersonId=`; unknown IDs are ignored. Closed days come from
+`booking.businessHours`.
+
+**Settings admin** (`/crm/settings?tab=brand|inventory|leads|thresholds|garages|templates`, owner).
+- `settings/admin-service.saveSettingsSection` validates one section (`settingsSectionSchema`). It
+  refuses to remove a key that records still use: `inventory.findVehicleKeysInUse`,
+  `leads.findLeadKeysInUse` and `garages.findGarageSpecialtiesInUse`. It then calls
+  `settings.replaceSettings`, which re-validates the whole document and its cross-references
+  (`settingsReferenceProblems`: status roles, public statuses, won/lost/appointment stages, inquiry
+  source) and invalidates the cache. Saved keys are immutable in the UI. New entries take a typed key
+  or one derived from the label. Stage order is the list order.
+- `settings/service` still imports no other module; the orchestration lives in `admin-service.ts`.
+- Garages: `garages.createGarage` / `updateGarage` (owner; specialties must be repair-type keys).
+  Deactivated garages stop being offered for new repairs, and their history is kept.
+- Email templates: `listEmailTemplates` / `updateEmailTemplate` (owner). Keys are fixed. An edit may
+  use only the placeholders every send path supplies (`commonPlaceholders`) plus those the stored
+  template already uses, because rendering throws on a missing value. The preview is a `sandbox=""`
+  iframe.
+
+**CSV export.** `Board` takes `exportName` and renders an Export CSV button. The export is built in
+the browser from the board's own columns and visible groups (`components/shared/board/csv.ts`):
+labels instead of keys, plain numbers for money. The inventory, team, garages and salesperson
+boards use it. Leads have `GET /crm/leads/export` with the board/list filters (the stage applies in
+list view), through `leads.exportLeads`. All CSV goes through `lib/csv.ts` (BOM, quoting, formula
+guard), which the commission report now shares.
+
+**Saved views** (`modules/views`, collection `board_views`): personal named filter sets for the
+inventory board and the leads screen. They are stored per user, so they follow the owner across
+devices. Queries are normalised to each board's known keys (pagination is never saved). Saving
+under an existing name replaces that view, with at most 20 per board. `npm run seed` clears them,
+because user IDs change on reseed.
+
+**Pipeline drag and drop.** `PipelineDndProvider` / `PipelineDropColumn` / `useDraggableLead` use
+native HTML drag and drop. A drop calls `changeLeadStageAction` with the card's stage as the
+conflict check. Cards are `role="button"` elements, because Firefox won't start a drag from a
+`<button>`. Tap-to-move stays the keyboard and phone path.

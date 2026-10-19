@@ -4,15 +4,15 @@ import { connectDb } from "@/lib/db";
 import { emit } from "@/lib/events";
 import { objectIdSchema } from "@/lib/data-schema";
 import { getSettings } from "@/modules/settings/service";
-import { getLeadForBooking, advanceLeadForBooking, getLead } from "@/modules/leads/service";
+import { getLeadForBooking, getLead } from "@/modules/leads/service";
 import { requireRole } from "@/modules/auth/service";
 import { getVehicleForAutomation } from "@/modules/inventory/service";
 import { getDealershipForAutomation } from "@/modules/dealerships/service";
 import { findActiveUser } from "@/modules/users/service";
 import { AppointmentModel } from "./model";
-import { appointmentSchema, bookingInputSchema } from "./schema";
+import { appointmentSchema, bookingInputSchema, staffBookingSchema } from "./schema";
 import { buildSlotDays } from "./slots";
-import { bookingCopy } from "./copy";
+import { bookingCopy, staffBookingCopy } from "./copy";
 
 export class BookingError extends Error {}
 
@@ -42,15 +42,20 @@ function findBooked(leadId: string) {
   return AppointmentModel.findOne({ leadId, status: "booked" }).lean().exec();
 }
 
+/** The salesperson who can take a lead's appointment: assigned, active and at the lead's location. */
+async function bookingSalesperson(lead: { assignedTo: string | null; dealershipId: string }) {
+  const assigned = lead.assignedTo ? await findActiveUser(lead.assignedTo) : null;
+  return assigned?.role === "salesperson" && assigned.dealershipId === lead.dealershipId ? assigned : null;
+}
+
 /** Lead, location and the salesperson who can take the appointment (assigned, active, same location). */
 async function loadBooking(token: string) {
   const lead = await getLeadForBooking(token);
   if (!lead) return null;
-  const [settings, dealership, vehicle, existing, assigned] = await Promise.all([
+  const [settings, dealership, vehicle, existing, salesperson] = await Promise.all([
     getSettings(), getDealershipForAutomation(lead.dealershipId), getVehicleForAutomation(lead.vehicleId),
-    findBooked(lead.id), lead.assignedTo ? findActiveUser(lead.assignedTo) : null,
+    findBooked(lead.id), bookingSalesperson(lead),
   ]);
-  const salesperson = assigned?.role === "salesperson" && assigned.dealershipId === lead.dealershipId ? assigned : null;
   const vehicleName = `${vehicle.year} ${vehicle.make} ${vehicle.model} ${vehicle.trim}`.trim();
   return { lead, settings, dealership, vehicleName, existing, salesperson };
 }
@@ -103,8 +108,22 @@ export async function book(input: unknown) {
     throw new BookingError(bookingCopy.alreadyBooked);
   }
   if (!salesperson) throw new BookingError(bookingCopy.unavailableBody);
+  const result = await commitBooking({ lead, salesperson, requested, actorId: null, messages: bookingCopy });
+  return { when: format.when(result.startsAt) };
+}
+
+type BookingLead = { id: string; vehicleId: string; dealershipId: string };
+/**
+ * Inserts a booking for a currently free slot, then emits `appointment.booked` (whose recipes move the lead
+ * to the appointment stage, confirm with the customer and alert the salesperson). Unique indexes settle races; a repeat of the lead's own booked time is a replay.
+ * After the insert, failures are logged (and reported as `failed`) rather than undoing the booking.
+ */
+async function commitBooking({ lead, salesperson, requested, actorId, messages }: {
+  lead: BookingLead; salesperson: { id: string }; requested: number;
+  actorId: string | null; messages: { taken: string; alreadyBooked: string };
+}) {
   const slot = (await getAvailableSlots(salesperson.id)).flatMap((day) => day.slots).find((entry) => Date.parse(entry.startsAt) === requested);
-  if (!slot) throw new BookingError(bookingCopy.taken);
+  if (!slot) throw new BookingError(messages.taken);
   await AppointmentModel.init();
   let appointmentId: string;
   try {
@@ -114,17 +133,59 @@ export async function book(input: unknown) {
   } catch (error) {
     if (!(error instanceof Error && "code" in error && error.code === 11000)) throw error;
     const winner = await findBooked(lead.id);
-    if (winner?.startsAt.getTime() === requested) return { when: format.when(slot.startsAt) };
-    throw new BookingError(winner ? bookingCopy.alreadyBooked : bookingCopy.taken);
+    if (winner?.startsAt.getTime() === requested) return { startsAt: slot.startsAt, failed: false };
+    throw new BookingError(winner ? messages.alreadyBooked : messages.taken);
   }
-  // The appointment is committed; later failures are logged rather than reported to the customer.
-  try { await advanceLeadForBooking(lead.id, settings.booking.appointmentStageKey); }
-  catch { console.error("Appointment saved; lead stage update failed.", { appointmentId }); }
+  let failed = false;
+  // The appointment is committed; later failures are logged rather than reported as a failed booking.
+  // The lead's stage move is the `appointment_stage_update` recipe, run by the `appointment.booked` handlers.
   try {
     await emit("appointment.booked", { leadId: lead.id, vehicleId: lead.vehicleId, dealershipId: lead.dealershipId,
-      appointmentId, salespersonId: salesperson.id, startsAt: slot.startsAt, endsAt: slot.endsAt });
-  } catch { console.error("Appointment saved; appointment.booked handler failed.", { appointmentId }); }
-  return { when: format.when(slot.startsAt) };
+      appointmentId, salespersonId: salesperson.id, startsAt: slot.startsAt, endsAt: slot.endsAt, ...(actorId ? { changedBy: actorId } : {}) });
+  } catch { failed = true; console.error("Appointment saved; appointment.booked handler failed.", { appointmentId }); }
+  return { startsAt: slot.startsAt, failed };
+}
+
+export type StaffBookingOptions =
+  | { state: "unassigned" }
+  | { state: "booked"; when: string }
+  | { state: "open"; salespersonName: string; zone: string; days: { date: string; label: string; slots: { startsAt: string; label: string; when: string }[] }[] };
+
+/** Free slots for staff booking on a customer's behalf, with the lead's assigned salesperson. Null when the lead is not visible. */
+export async function getStaffBookingOptions(leadId: string): Promise<StaffBookingOptions | null> {
+  const lead = await getLead(leadId);
+  if (!lead) return null;
+  const [settings, existing, salesperson] = await Promise.all([getSettings(), findBooked(lead.id), bookingSalesperson(lead)]);
+  const format = formatters(settings.booking.timeZone);
+  if (existing) return { state: "booked", when: format.when(existing.startsAt.toISOString()) };
+  if (!salesperson) return { state: "unassigned" };
+  const days = await getAvailableSlots(salesperson.id);
+  return {
+    state: "open", salespersonName: salesperson.name, zone: format.zone(new Date().toISOString()),
+    days: days.map((day) => ({ date: day.date, label: format.day(day.slots[0].startsAt),
+      slots: day.slots.map((slot) => ({ startsAt: slot.startsAt, label: format.time(slot.startsAt), when: format.when(slot.startsAt) })) })),
+  };
+}
+
+/**
+ * Staff books for the customer (phone, walk-in): the same slot rules, stage move, emails and alerts as
+ * online booking, with the staff member recorded as the actor.
+ */
+export async function bookForLead(input: unknown) {
+  const user = await requireRole();
+  const data = staffBookingSchema.parse(input);
+  const lead = await getLead(data.leadId);
+  if (!lead) throw new BookingError(staffBookingCopy.notFound);
+  const [settings, existing, salesperson] = await Promise.all([getSettings(), findBooked(lead.id), bookingSalesperson(lead)]);
+  const format = formatters(settings.booking.timeZone);
+  const requested = Date.parse(data.startsAt);
+  if (existing) {
+    if (existing.startsAt.getTime() === requested) return { when: format.when(existing.startsAt.toISOString()) };
+    throw new BookingError(staffBookingCopy.alreadyBooked);
+  }
+  if (!salesperson) throw new BookingError(staffBookingCopy.unassigned);
+  const result = await commitBooking({ lead, salesperson, requested, actorId: user.id, messages: staffBookingCopy });
+  return { when: format.when(result.startsAt), ...(result.failed ? { warning: staffBookingCopy.savedWithWarning } : {}) };
 }
 
 
@@ -141,6 +202,30 @@ export async function listStaffAppointments(from: string, limit = 100) {
   await connectDb();
   const documents = await AppointmentModel.find({ status: "booked", endsAt: { $gt: since }, ...(user.role === "owner" ? {} : { salespersonId: user.id }) })
     .sort({ startsAt: 1, _id: 1 }).limit(limit).lean().exec();
+  return documents.map(toStaffAppointment);
+}
+
+/**
+ * Booked or completed appointments starting in [from, to), soonest first (team and profile stats).
+ * Owners may narrow to one salesperson; salespeople always get only their own.
+ */
+export async function listAppointmentsBetween(from: string, to: string, salespersonId?: string) {
+  const user = await requireRole();
+  const range = z.object({ from: z.string().datetime({ offset: true }), to: z.string().datetime({ offset: true }), salespersonId: objectIdSchema.optional() })
+    .parse({ from, to, salespersonId });
+  const person = user.role === "owner" ? range.salespersonId : user.id;
+  await connectDb();
+  const documents = await AppointmentModel.find({ status: { $in: ["booked", "completed"] }, startsAt: { $gte: new Date(range.from), $lt: new Date(range.to) }, ...(person ? { salespersonId: person } : {}) })
+    .sort({ startsAt: 1, _id: 1 }).limit(1000).lean().exec();
+  return documents.map(toStaffAppointment);
+}
+
+/** Internal reminder read: booked appointments starting in [from, to), soonest first. */
+export async function listBookedAppointmentsForAutomation(from: string, to: string) {
+  const range = z.object({ from: z.string().datetime({ offset: true }), to: z.string().datetime({ offset: true }) }).parse({ from, to });
+  await connectDb();
+  const documents = await AppointmentModel.find({ status: "booked", startsAt: { $gte: new Date(range.from), $lt: new Date(range.to) } })
+    .sort({ startsAt: 1, _id: 1 }).limit(1000).lean().exec();
   return documents.map(toStaffAppointment);
 }
 

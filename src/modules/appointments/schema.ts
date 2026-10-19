@@ -16,3 +16,7 @@ export type Appointment = z.infer<typeof appointmentSchema>;
 export const bookingInputSchema = z.object({ token: z.string().max(100), startsAt: dateTimeSchema }).strict();
 export type BookingInput = z.infer<typeof bookingInputSchema>;
 export type BookingResult = { ok: true; when: string } | { ok: false; message: string };
+
+// Staff booking on the customer's behalf: lead visibility and the salesperson are checked by the service.
+export const staffBookingSchema = z.object({ leadId: objectIdSchema, startsAt: dateTimeSchema }).strict();
+export type StaffBookingResult = { ok: true; when: string; warning?: string } | { ok: false; message: string };

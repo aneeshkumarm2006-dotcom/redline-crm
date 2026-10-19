@@ -49,3 +49,6 @@ next-env.d.ts
 /.public-check/
 /.automation-check/
 /.booking-check/
+
+.vercel
+.env*

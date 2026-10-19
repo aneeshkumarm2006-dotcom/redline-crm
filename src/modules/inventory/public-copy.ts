@@ -1,7 +1,6 @@
 export const publicInventoryCopy = {
   title: "Find your next vehicle", intro: "Explore our available vehicles and connect with your local dealership.",
   inventory: "Browse inventory", staff: "Staff sign in", skip: "Skip to vehicles", available: "Available vehicles",
-  dealership: "Dealership", all: "All dealerships", filter: "Apply filter", clear: "Clear filter",
   empty: "No available vehicles", emptyHint: "Try another dealership or check back for new arrivals.",
   invalid: "That filter is invalid. Please choose a dealership below.",
   view: "View vehicle", back: "Back to inventory", specs: "Vehicle details", photos: "Vehicle photos",
@@ -12,4 +11,22 @@ export const publicInventoryCopy = {
   results: (count: number) => `${count} available vehicle${count === 1 ? "" : "s"}`,
   page: (page: number, total: number) => `Page ${page} of ${total}`,
   photo: (title: string, index: number) => `${title} — photo ${index + 1}`,
+  // Hero and locations (8.1)
+  heroEyebrow: (count: number) => `${count} location${count === 1 ? "" : "s"} · Inspected used vehicles`,
+  browse: "Browse vehicles", locations: "Our locations", call: (phone: string) => `Call ${phone}`,
+  vehiclesAt: (count: number) => `${count} vehicle${count === 1 ? "" : "s"} available`, seeVehicles: "See vehicles",
+  locationFilter: "Filter by location", allLocations: "All locations",
+  badges: { price_drop: "Price drop", new_arrival: "New arrival" },
+  // Vehicle page (8.2)
+  keySpecs: "Key specs", year: "Year", make: "Make", model: "Model", dealershipLabel: "Location",
+  gallery: { previous: "Previous photo", next: "Next photo", count: (index: number, total: number) => `${index + 1} / ${total}`, show: (index: number) => `Show photo ${index + 1}` },
+  trustLabel: "Why buy from us",
+  trust: [
+    { key: "inspected", title: "Inspected & certified", text: "Every vehicle passes a multi-point safety inspection before it reaches the lot." },
+    { key: "financing", title: "Financing available", text: "Flexible financing for every credit situation, arranged in-store." },
+    { key: "trade", title: "Trade-ins welcome", text: "Bring your current vehicle for a fair, no-obligation appraisal." },
+  ],
+  cta: { label: "Contact the dealership", testDrive: "Test drive", inquire: "Inquire" },
+  testDriveTitle: "Book a test drive", testDriveIntro: "Send your details and we’ll email you a link to pick a time that suits you.",
+  testDriveMessage: "I’d like to book a test drive.",
 } as const;

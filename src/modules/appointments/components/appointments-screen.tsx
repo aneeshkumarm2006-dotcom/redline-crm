@@ -1,6 +1,7 @@
 import { requestNow } from "@/lib/clock";
 import Link from "next/link";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, CalendarRange, List } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/shared/empty-state";
 import { requirePageUser } from "@/modules/auth/page-guards";
 import { getVehicleSummaries } from "@/modules/inventory/service";
@@ -8,10 +9,12 @@ import { getLeadSummaries } from "@/modules/leads/service";
 import { leadsCopy } from "@/modules/leads/copy";
 import { LeadsTabs } from "@/modules/leads/components/leads-tabs";
 import { getSettings } from "@/modules/settings/service";
-import { getStaffNames } from "@/modules/users/service";
+import { getStaffNames, listSalespeople } from "@/modules/users/service";
+import { listDealerships } from "@/modules/dealerships/service";
 import { listStaffAppointments, type StaffAppointment } from "../service";
 import { localDate, startOfLocalDay } from "../slots";
 import { appointmentsCopy as copy } from "../copy";
+import { AppointmentsCalendar } from "./appointments-calendar";
 
 /** Resolves display names for appointment rows within the viewer's visibility. */
 export async function describeAppointments(appointments: StaffAppointment[]) {
@@ -52,21 +55,41 @@ export function AppointmentList({ appointments, timeZone, showDate, showSalesper
   })}</ul>;
 }
 
-export async function AppointmentsScreen() {
+export async function AppointmentsScreen({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requirePageUser();
+  const query = await searchParams;
+  const text = (key: string) => typeof query[key] === "string" ? query[key] : undefined;
+  const week = query.view === "week";
   const settings = await getSettings();
   const zone = settings.booking.timeZone;
   const now = requestNow();
+  const owner = user.role === "owner";
+  const header = <header className="space-y-4">
+    <div><h1 className="text-3xl font-semibold tracking-tight">{leadsCopy.title}</h1><p className="mt-2 text-sm text-muted-foreground">{owner ? copy.intro : copy.introMine}</p></div>
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <LeadsTabs active="appointments" />
+      <nav aria-label={copy.viewLabel} className="inline-flex rounded-lg border bg-card p-0.5">
+        {(["list", "week"] as const).map((entry) => {
+          const Icon = entry === "list" ? List : CalendarRange;
+          const active = (entry === "week") === week;
+          return <Link key={entry} href={entry === "week" ? "/crm/leads/appointments?view=week" : "/crm/leads/appointments"} aria-current={active ? "page" : undefined}
+            className={cn("inline-flex min-h-10 items-center gap-2 rounded-md px-3 text-sm font-medium", active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}>
+            <Icon aria-hidden className="size-4" />{copy.views[entry]}</Link>;
+        })}
+      </nav>
+    </div>
+  </header>;
+  if (week) {
+    const [dealerships, salespeople] = await Promise.all([owner ? listDealerships() : [], owner ? listSalespeople() : []]);
+    return <>{header}<AppointmentsCalendar query={{ week: text("week"), dealershipId: text("dealershipId"), salespersonId: text("salespersonId") }} settings={settings} now={now} owner={owner}
+      dealerships={dealerships.filter((entry) => entry.active)} salespeople={salespeople.map((entry) => ({ id: entry.id, name: entry.name, dealershipId: entry.dealershipId }))} /></>;
+  }
   const appointments = await describeAppointments(await listStaffAppointments(new Date(startOfLocalDay(now, zone)).toISOString()));
   const today = localDate(now, zone);
   const todays = appointments.filter((entry) => localDate(Date.parse(entry.startsAt), zone) === today);
   const later = appointments.filter((entry) => localDate(Date.parse(entry.startsAt), zone) !== today);
-  const owner = user.role === "owner";
   return <>
-    <header className="space-y-4">
-      <div><h1 className="text-3xl font-semibold tracking-tight">{leadsCopy.title}</h1><p className="mt-2 text-sm text-muted-foreground">{owner ? copy.intro : copy.introMine}</p></div>
-      <LeadsTabs active="appointments" />
-    </header>
+    {header}
     {!appointments.length ? <EmptyState icon={CalendarDays} title={copy.empty} description={copy.emptyHint} /> : <>
       <section aria-labelledby="appointments-today" className="space-y-3">
         <h2 id="appointments-today" className="font-semibold">{copy.today} <span className="font-normal text-muted-foreground">· {todays.length}</span></h2>

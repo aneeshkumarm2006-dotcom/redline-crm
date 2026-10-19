@@ -15,6 +15,9 @@ import { replaceLeadsForSeed } from "../src/modules/leads/service";
 import { replaceAppointmentsForSeed } from "../src/modules/appointments/service";
 import { replaceNotificationsForSeed } from "../src/modules/notifications/service";
 import { replaceEmailTemplatesForSeed } from "../src/modules/email-templates/service";
+import { replaceGaragesForSeed } from "../src/modules/garages/service";
+import { replaceAutomationRunsForSeed, replaceEmailLogForSeed } from "../src/modules/automations/service";
+import { clearViewsForSeed } from "../src/modules/views/service";
 import { buildDemoData, demoStaff } from "./seed/data";
 
 loadEnvConfig(process.cwd(), true);
@@ -41,7 +44,7 @@ async function main() {
     }));
     const hashes: Record<string, string> = {};
     for (const credential of credentials) hashes[credential.email] = await hashPassword(credential.password);
-    const data = buildDemoData(hashes);
+    const data = buildDemoData(hashes, new Date(), process.env.APP_URL ?? "http://localhost:3000");
     await connectDb();
     // Save credentials before destructive writes; rerunning reuses the same passwords.
     await writeFile(credentialsPath, JSON.stringify(credentials, null, 2) + "\n", { mode: 0o600 });
@@ -49,14 +52,25 @@ async function main() {
     resetting = true;
     await replaceSettingsForSeed(data.settings);
     await replaceDealershipsForSeed(data.dealerships);
+    await replaceGaragesForSeed(data.garages);
     await replaceUsersForSeed(data.users);
     await replaceVehiclesForSeed(data.vehicles);
     await replaceLeadsForSeed(data.leads);
     await replaceAppointmentsForSeed(data.appointments);
     await replaceNotificationsForSeed(data.notifications);
     await replaceEmailTemplatesForSeed(data.emailTemplates);
+    await replaceAutomationRunsForSeed(data.automationRuns);
+    await replaceEmailLogForSeed(data.emailLog);
+    await clearViewsForSeed();
     await clearLoginAttemptsForSeed();
-    console.info("Seed complete: 3 dealerships, 1 owner, 6 salespeople, 27 vehicles, 10 leads, 2 appointments, 9 notifications, 7 email templates, and default settings.");
+    const owners = data.users.filter((user) => user.role === "owner").length;
+    const sold = data.vehicles.filter((vehicle) => vehicle.sale).length;
+    const inRepair = data.vehicles.filter((vehicle) => vehicle.repair).length;
+    const unread = data.notifications.filter((notification) => !notification.readAt).length;
+    console.info(`Seed complete: ${data.dealerships.length} dealerships, ${data.garages.length} garages, ${owners} owner, ${data.users.length - owners} salespeople, `
+      + `${data.vehicles.length} vehicles (${data.vehicles.length - sold} in stock, ${inRepair} in repair, ${sold} sold over 6 months), ${data.leads.length} leads, `
+      + `${data.appointments.length} appointments, ${data.notifications.length} notifications (${unread} unread), ${data.emailTemplates.length} email templates, `
+      + `${data.automationRuns.length} automation runs, ${data.emailLog.length} logged emails, and default settings.`);
     console.info("Demo Jeep: CLA-001 — 2022 Jeep Grand Cherokee Limited 4x4 (Available).");
     console.info("Local login credentials: " + credentialsPath + ". No emails were sent.");
   } catch {
