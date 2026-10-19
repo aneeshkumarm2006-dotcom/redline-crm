@@ -31,6 +31,7 @@ const settingsModelSchema = new Schema<SettingsDocument>({
   publicInquirySourceKey: String,
   statusRoles: { type: new Schema({ available: String, repair: String, sold: String }, embedded) },
   wonStageKey: String,
+  lostStageKey: String,
   inventoryAging: { type: new Schema({ warnDays: Number, criticalDays: Number }, embedded) },
   repairOverdueDays: Number,
   uncontactedLeadHours: Number,

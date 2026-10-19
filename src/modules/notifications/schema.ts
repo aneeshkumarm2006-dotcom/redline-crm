@@ -22,7 +22,7 @@ export const notificationInputSchema = z.object({
   // An event UUID, or a deterministic reminder key such as `aging:<yyyy-mm-dd>` (unique per user).
   eventId: z.string().trim().min(1).max(200).optional(),
   userId: objectIdSchema, event: z.enum(notificationKinds), message: z.string().trim().min(1).max(1000),
-  link: z.string().max(2048).regex(/^\/crm(?:\/[a-zA-Z0-9/_-]*)?$/),
+  link: z.string().max(2048).regex(/^\/crm(?:\/[a-zA-Z0-9/_-]*)?(?:\?[a-zA-Z0-9=&_-]*)?$/),
   readAt: dateTimeSchema.nullable().default(null),
 }).strict();
 export const notificationSchema = notificationInputSchema.extend({ id: objectIdSchema });
