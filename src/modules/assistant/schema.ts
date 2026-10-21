@@ -14,7 +14,7 @@ export const messageSources = ["email", "inquiry", "reply"] as const;
 
 const messageIdSchema = z.string().trim().min(3).max(998);
 export const assistantMessageInputSchema = z.object({
-  // Null for an inbound email no lead could be matched to (shown to owners as unmatched).
+  // Always set in practice: mail that matches no lead is not stored (the inbox is a working mailbox).
   leadId: objectIdSchema.nullable(),
   direction: z.enum(["inbound", "outbound"]),
   // `inquiry` is the message typed in the website form; `reply` is an outbound answer.

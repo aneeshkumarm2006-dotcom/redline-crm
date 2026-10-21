@@ -22,7 +22,6 @@ export const assistantNotes = {
   optedOut: "The customer asked not to receive emails.",
   closed: "The lead is closed (won or lost); staff should answer.",
   dailyLimit: (limit: number) => `Daily limit of ${limit} automatic replies reached for this customer.`,
-  unmatched: "No lead matches the sender.",
   stale: "Older than the inbox start; not answered automatically.",
   answeredByStaff: (name: string) => `Answered by ${name}.`,
   noKey: "ANTHROPIC_API_KEY is not set, so the assistant cannot reply.",
@@ -66,9 +65,7 @@ export const assistantCopy = {
   instructionsPlaceholder: "We offer free delivery within 50 km. Trade-ins are appraised in person. Never discuss financing rates.",
   save: "Save settings", saving: "Saving…", saved: "Assistant settings saved.",
   attention: "Needs attention", attentionEmpty: "Nothing needs attention.", drafts: "Drafts to review", handoffs: "Handed to staff", failures: "Could not answer",
-  recent: "Recent conversation activity", recentEmpty: "No assistant activity yet.", unmatched: "Emails from unknown senders",
-  unmatchedHint: "Replies the assistant could not match to a lead. Check the inbox and add a lead if needed.",
-  openLead: "Open lead", weekStats: "Last 7 days", repliesSent: "Replies sent", customerEmails: "Customer emails", booked: "Booked by assistant", handedOff: "Handed off",
+  recent: "Recent conversation activity", recentEmpty: "No assistant activity yet.",  openLead: "Open lead", weekStats: "Last 7 days", repliesSent: "Replies sent", customerEmails: "Customer emails", booked: "Booked by assistant", handedOff: "Handed off",
   setupTitle: "Setup", setup: [
     "Replies are read from the Gmail inbox in SMTP_USER (IMAP, same app password). Set ASSISTANT_IMAP_HOST/USER/PASS to read another mailbox.",
     "Leave EMAIL_REPLY_TO empty, or point it at that inbox, so customer replies reach the assistant.",

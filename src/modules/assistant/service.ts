@@ -145,28 +145,26 @@ export async function ingestInboundEmail(email: InboundEmail, options: { earlies
   }
   leadId ??= await findLeadIdByCustomerEmail(from);
   const lead = leadId ? await getLeadForAutomation(leadId) : null;
+  // The reply inbox is usually someone's working mailbox: mail that belongs to no customer is never stored.
+  if (!lead) return { status: "ignored", leadId: null };
   const automated = isAutomatedEmail({ from, subject: email.subject, headers: email.headers });
-  // Newsletters and notices to the mailbox that belong to no customer are not stored at all.
-  if (!lead && automated) return { status: "ignored", leadId: null };
   let status: InboundStatus = "pending";
   let note = "";
-  if (!lead) { status = "ignored"; note = assistantNotes.unmatched; }
-  else if (automated) { status = "ignored"; note = automated; }
+  if (automated) { status = "ignored"; note = automated; }
   else if (options.earliest && email.receivedAt.getTime() < options.earliest) { status = "ignored"; note = assistantNotes.stale; }
   // A reply in the thread from someone other than the customer (a forward, a spouse) goes to staff, never answered automatically.
   else if (lead.email.toLowerCase() !== from) { status = "skipped"; note = `Sent from ${from}, not the customer's address ${lead.email}.`; }
-  const saved = await insertMessage({ leadId: lead?.id ?? null, direction: "inbound", source: "email", author: "customer",
+  const saved = await insertMessage({ leadId: lead.id, direction: "inbound", source: "email", author: "customer",
     fromEmail: from.slice(0, 254), fromName: email.fromName.slice(0, 200), to: email.to.slice(0, 20).map((address) => address.slice(0, 254)),
-    // Mail from unknown senders keeps only the sender and subject: the mailbox may hold unrelated personal mail.
-    subject: email.subject.replace(/[\r\n]+/g, " ").trim().slice(0, 300), text: lead ? stripQuotedReply(email.text).slice(0, 20_000) : "",
+    subject: email.subject.replace(/[\r\n]+/g, " ").trim().slice(0, 300), text: stripQuotedReply(email.text).slice(0, 20_000),
     messageId, inReplyTo: messageIds(email.inReplyTo)[0] ?? null, references, status, note, occurredAt: email.receivedAt.toISOString() });
   if (!saved) return { status: "duplicate", leadId: null };
-  if (lead && (status === "pending" || status === "skipped")) {
+  if (status === "pending" || status === "skipped") {
     await appendLeadActivity(lead.id, { type: "customer_email", message: assistantActivity.customerEmail(saved.subject), occurredAt: saved.occurredAt, actorId: null });
   }
-  if (lead && status === "skipped") await alertStaff(lead, "assistant.customer_reply", `assistant-reply:${saved.id}`, assistantAlerts.customerReply(lead.name, "from another address"));
+  if (status === "skipped") await alertStaff(lead, "assistant.customer_reply", `assistant-reply:${saved.id}`, assistantAlerts.customerReply(lead.name, "from another address"));
   if (status === "pending") scheduleAssistantProcessing();
-  return { status, leadId: lead?.id ?? null };
+  return { status, leadId: lead.id };
 }
 
 /**
@@ -649,13 +647,12 @@ export async function getAssistantOverview(now = Date.now()) {
   const settings = await getSettings();
   await connectDb();
   const week = new Date(now - 7 * DAY);
-  const [state, drafts, paused, failures, recent, unmatched, repliesSent, customerEmails, handedOff] = await Promise.all([
+  const [state, drafts, paused, failures, recent, repliesSent, customerEmails, handedOff] = await Promise.all([
     AssistantStateModel.findById("inbox").lean().exec(),
     AssistantMessageModel.find({ direction: "outbound", status: "draft" }).sort({ occurredAt: -1 }).limit(20).lean().exec(),
     AssistantThreadModel.find({ paused: true }).sort({ pausedAt: -1 }).limit(20).lean().exec(),
     AssistantMessageModel.find({ direction: "inbound", status: "failed", occurredAt: { $gte: week } }).sort({ occurredAt: -1 }).limit(20).lean().exec(),
     AssistantMessageModel.find({ leadId: { $ne: null }, status: { $nin: ["draft", "discarded"] } }).sort({ occurredAt: -1 }).limit(20).lean().exec(),
-    AssistantMessageModel.find({ leadId: null, direction: "inbound" }).sort({ occurredAt: -1 }).limit(10).lean().exec(),
     AssistantMessageModel.countDocuments({ direction: "outbound", author: "assistant", status: "sent", occurredAt: { $gte: week } }).exec(),
     AssistantMessageModel.countDocuments({ direction: "inbound", source: "email", leadId: { $ne: null }, occurredAt: { $gte: week } }).exec(),
     AssistantMessageModel.countDocuments({ direction: "inbound", status: "handed_off", occurredAt: { $gte: week } }).exec(),
@@ -678,7 +675,7 @@ export async function getAssistantOverview(now = Date.now()) {
       emailProblems: emailDeliveryStatus().problems,
     },
     stats: { repliesSent, customerEmails, handedOff },
-    drafts: drafts.map(row), failures: failures.map(row), recent: recent.map(row), unmatched: unmatched.map(row),
+    drafts: drafts.map(row), failures: failures.map(row), recent: recent.map(row),
     paused: paused.map((entry) => ({ leadId: String(entry._id), leadName: names.get(String(entry._id)) ?? "Customer", reason: entry.pausedReason ?? "", at: entry.pausedAt ? entry.pausedAt.toISOString() : null })),
   };
 }

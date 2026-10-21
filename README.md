@@ -440,8 +440,8 @@ What it does:
 - **Hands off to staff** (in-app alert, assistant paused for that customer) for price negotiation, financing,
   trade-in values, reschedules/cancellations, complaints, requests for a person, or anything it can't answer from
   the CRM's facts. It never invents facts, discounts or links, and says it is an AI if asked.
-- **Never answers:** automatic replies/out-of-office/bounces/mailing lists, unknown senders (kept as sender + subject
-  only), replies from a different address than the customer's, won/lost leads, paused or unsubscribed customers, and
+- **Never answers:** automatic replies/out-of-office/bounces/mailing lists, mail from anyone who is not
+  a lead (not stored at all, so the inbox can be a normal working mailbox), mail older than 3 days, replies from a different address than the customer's, won/lost leads, paused or unsubscribed customers, and
   more than the daily cap of automatic replies per customer (default 5, stops reply loops). Staff are alerted instead.
 - **Modes:** *Send automatically* or *Draft for staff approval* (drafts appear on the Conversation tab; nothing is
   booked). Staff can also ask for a draft, write their own reply in the thread (this pauses the assistant for that

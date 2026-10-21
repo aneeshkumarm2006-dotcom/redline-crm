@@ -78,11 +78,6 @@ export async function AssistantScreen() {
           <h2 id="assistant-recent" className="text-[0.9375rem] font-semibold tracking-tight">{copy.recent}</h2>
           <RowList rows={overview.recent} zone={zone} empty={copy.recentEmpty} />
         </section>
-        {overview.unmatched.length > 0 && <section aria-labelledby="assistant-unmatched" className={panel}>
-          <h2 id="assistant-unmatched" className="text-[0.9375rem] font-semibold tracking-tight">{copy.unmatched}</h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">{copy.unmatchedHint}</p>
-          <RowList rows={overview.unmatched} zone={zone} />
-        </section>}
       </div>
       <div className="grid min-w-0 content-start gap-4 sm:gap-5 xl:col-span-5">
         <section aria-labelledby="assistant-status" className={panel}>

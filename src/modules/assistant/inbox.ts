@@ -13,6 +13,8 @@ const MAX_PER_POLL = 40;
 const MAX_BYTES = 5 * 1024 * 1024;
 // The first poll (or a mailbox reset) only picks up very recent mail, so turning the assistant on never answers a backlog.
 const FIRST_POLL_WINDOW = 30 * MINUTE;
+// Never answer mail older than this, even if the poller was down for a while.
+const MAX_AGE = 3 * 24 * 60 * MINUTE;
 
 const addresses = (value: AddressObject | AddressObject[] | undefined) =>
   (Array.isArray(value) ? value : value ? [value] : []).flatMap((entry) => entry.value).map((entry) => entry.address?.toLowerCase() ?? "").filter(Boolean);
@@ -90,15 +92,20 @@ export async function pollInbox(now = Date.now()): Promise<PollSummary> {
       const uids = fresh
         ? await client.search({ since: new Date(now - 2 * 24 * 60 * MINUTE) }, { uid: true })
         : await client.search({ uid: `${lastUid + 1}:*` }, { uid: true });
-      const pending = (uids || []).filter((uid) => fresh || uid > lastUid).sort((a, b) => a - b);
-      if (fresh) { uidValidity = validity; lastUid = 0; }
-      for (const uid of pending.slice(0, MAX_PER_POLL)) {
-        const message = await client.fetchOne(String(uid), { uid: true, source: true, size: true, internalDate: true }, { uid: true });
+      const candidates = (uids || []).filter((uid) => fresh || uid > lastUid).sort((a, b) => a - b);
+      // A first poll starts at the newest mail: everything older is skipped for good, never read on a later poll.
+      const pending = fresh ? candidates.slice(-MAX_PER_POLL) : candidates.slice(0, MAX_PER_POLL);
+      if (fresh) { uidValidity = validity; lastUid = candidates.at(-1) ?? Math.max(0, Number(mailbox.uidNext ?? 1) - 1); }
+      const earliest = fresh ? now - FIRST_POLL_WINDOW : now - MAX_AGE;
+      for (const uid of pending) {
         lastUid = Math.max(lastUid, uid);
-        if (!message || !message.source || (message.size ?? 0) > MAX_BYTES) continue;
-        const receivedAt = message.internalDate ? new Date(message.internalDate) : undefined;
-        if (fresh && receivedAt && receivedAt.getTime() < now - FIRST_POLL_WINDOW) continue;
-        const result = await ingestInboundEmail(await parseRawEmail(message.source, receivedAt), { earliest: fresh ? now - FIRST_POLL_WINDOW : undefined });
+        // Dates first (cheap), so old mail is skipped without downloading it.
+        const header = await client.fetchOne(String(uid), { uid: true, size: true, internalDate: true }, { uid: true });
+        const receivedAt = header && header.internalDate ? new Date(header.internalDate) : undefined;
+        if (!header || (header.size ?? 0) > MAX_BYTES || !receivedAt || receivedAt.getTime() < earliest) continue;
+        const message = await client.fetchOne(String(uid), { uid: true, source: true }, { uid: true });
+        if (!message || !message.source) continue;
+        const result = await ingestInboundEmail(await parseRawEmail(message.source, receivedAt), { earliest });
         fetched++;
         if (result.status === "pending") queued++;
       }
