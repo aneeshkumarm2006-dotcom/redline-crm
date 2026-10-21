@@ -387,6 +387,21 @@ export async function getLeadForAutomation(id: string) {
   return leadSchema.parse({ ...data, id: _id });
 }
 
+/**
+ * Internal (virtual assistant): the lead a customer email address belongs to. Prefers the newest open lead (not won or
+ * lost) over closed ones, so a returning customer's reply lands on the conversation still in progress.
+ */
+export async function findLeadIdByCustomerEmail(email: string) {
+  const address = z.string().trim().toLowerCase().email().safeParse(email);
+  if (!address.success) return null;
+  const settings = await getSettings();
+  await connectDb();
+  const closed = [settings.wonStageKey, settings.lostStageKey];
+  const open = await LeadModel.findOne({ email: address.data, stage: { $nin: closed } }).select("_id").sort({ updatedAt: -1, _id: -1 }).lean().exec();
+  const any = open ?? await LeadModel.findOne({ email: address.data }).select("_id").sort({ updatedAt: -1, _id: -1 }).lean().exec();
+  return any ? String(any._id) : null;
+}
+
 export type AssignmentResult =
   | { kind: "manual" } | { kind: "already_assigned"; salespersonId: string } | { kind: "no_staff" }
   | { kind: "assigned"; salespersonId: string; salespersonName: string } | { kind: "taken" };

@@ -2,7 +2,7 @@ import "server-only";
 
 import { connectDb } from "@/lib/db";
 import { SETTINGS_ID, SettingsModel } from "./model";
-import { settingsReferenceProblems, settingsSchema, type Settings } from "./schema";
+import { assistantSettingsSchema, settingsReferenceProblems, settingsSchema, type Settings } from "./schema";
 import { requireRole } from "@/modules/auth/service";
 import { recipeToggleSchema } from "@/modules/automations/schema";
 
@@ -51,6 +51,16 @@ export async function setAutomationEnabled(input: unknown) {
   const { key, enabled } = recipeToggleSchema.parse(input);
   await connectDb();
   const result = await SettingsModel.updateOne({ _id: SETTINGS_ID }, { $set: { [`automations.${key}`]: enabled } }, { runValidators: true }).exec();
+  if (!result.matchedCount) throw new Error("Settings are missing. Run npm run seed:settings.");
+  invalidateSettingsCache();
+}
+
+/** Owner: saves the virtual assistant's configuration. Takes effect at once in this process; other instances within the cache TTL. */
+export async function setAssistantSettings(input: unknown) {
+  await requireRole("owner");
+  const assistant = assistantSettingsSchema.parse(input);
+  await connectDb();
+  const result = await SettingsModel.updateOne({ _id: SETTINGS_ID }, { $set: { assistant } }, { runValidators: true }).exec();
   if (!result.matchedCount) throw new Error("Settings are missing. Run npm run seed:settings.");
   invalidateSettingsCache();
 }

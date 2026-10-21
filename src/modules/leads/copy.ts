@@ -41,7 +41,8 @@ export const leadsCopy = {
   truncated: (shown: number, total: number) => `Showing the newest ${shown} of ${total} leads. Narrow the filters to see the rest.`,
   nextAppointment: "Next appointment", noAssignee: "Unassigned", moveStage: "Move stage", moveHint: "Tap a stage to move this lead.", openLead: "Open lead",
   // Lead detail
-  detailTabs: { overview: "Overview", emails: "Emails", activity: "Activity" }, tabsLabel: "Lead sections",
+  detailTabs: { overview: "Overview", conversation: "Conversation", emails: "Emails", activity: "Activity" }, tabsLabel: "Lead sections",
+  assistantActor: (name: string) => `${name} (assistant)`,
   quickActions: "Quick actions",
   logCall: "Log call", logCallHint: "Record a call with the customer. The first call or email marks the lead as contacted.",
   callNote: "What happened? (optional)", callNotePlaceholder: "Talked about financing, coming in Saturday…",

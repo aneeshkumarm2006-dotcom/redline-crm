@@ -61,6 +61,8 @@ export const demoSettings: Settings = {
   customerFollowUpDays: [2, 5],
   // Every recipe starts on; the Automations page (Stage 6) toggles them.
   automations: Object.fromEntries(automationRecipeKeys.map((key) => [key, true])),
+  // Virtual assistant on, replying by itself; owners switch it to drafts-for-approval on the Assistant page.
+  assistant: { enabled: true, mode: "auto", name: "Ava", answerInquiries: true, maxRepliesPerDay: 5, instructions: "" },
   notificationRules: [
     { event: "lead.created", recipients: ["customer"], channels: ["email"] },
     { event: "lead.assigned", recipients: ["assigned_salesperson"], channels: ["in_app", "email"] },

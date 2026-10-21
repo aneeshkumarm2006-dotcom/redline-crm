@@ -421,3 +421,44 @@ collapsible filters.
   and are cleared by `npm run seed`.
 - **Drag and drop:** on desktop, drag a lead card to another pipeline column. Tapping a card still
   works everywhere.
+
+## Virtual assistant (Claude)
+
+An AI assistant (default name **Ava**, model `claude-sonnet-5-5`) answers customers by email in the same thread.
+Owners configure it under **Automations → Assistant**; every lead has a **Conversation** tab.
+
+What it does:
+
+- **Website inquiries:** when a customer types a question in the inquiry form, it answers personally after the
+  automatic thank-you email (staff-entered leads are skipped; their message field is staff notes).
+- **Email replies:** customer replies to *any* CRM email (follow-ups, confirmations, its own answers) are read from
+  the reply inbox, matched to the lead by `In-Reply-To`/`References` (every outgoing email now carries our own
+  Message-ID) or by the sender's address, and answered in the thread.
+- **Tools:** checks the assigned salesperson's free slots and books (only after the customer agrees to a specific
+  time; the normal confirmation email, alert and stage move follow), suggests other listed cars when theirs is sold
+  or on hold, hands off to staff, and records unsubscribe requests.
+- **Hands off to staff** (in-app alert, assistant paused for that customer) for price negotiation, financing,
+  trade-in values, reschedules/cancellations, complaints, requests for a person, or anything it can't answer from
+  the CRM's facts. It never invents facts, discounts or links, and says it is an AI if asked.
+- **Never answers:** automatic replies/out-of-office/bounces/mailing lists, unknown senders (kept as sender + subject
+  only), replies from a different address than the customer's, won/lost leads, paused or unsubscribed customers, and
+  more than the daily cap of automatic replies per customer (default 5, stops reply loops). Staff are alerted instead.
+- **Modes:** *Send automatically* or *Draft for staff approval* (drafts appear on the Conversation tab; nothing is
+  booked). Staff can also ask for a draft, write their own reply in the thread (this pauses the assistant for that
+  customer), and pause/resume it. Day-2/5 templated follow-ups are skipped for customers who unsubscribed or are in an
+  active email conversation.
+
+Setup:
+
+1. `ANTHROPIC_API_KEY` in `.env.local` (and in Vercel project env vars for production).
+2. Reply inbox: with `EMAIL_PROVIDER=smtp` and Gmail, it reads the same mailbox over IMAP with the same app password
+   (enable IMAP in Gmail settings). Set `ASSISTANT_IMAP_*` to read another mailbox. Leave `EMAIL_REPLY_TO` empty or
+   point it at that inbox, otherwise replies go somewhere the assistant can't read.
+3. Locally the inbox is checked every 60 seconds (`ASSISTANT_POLL_SECONDS`). On Vercel, call
+   `GET /api/assistant/poll` every 1–5 minutes with `Authorization: Bearer <CRON_SECRET>` (Vercel Cron on a paid plan
+   or any external cron service); the daily `/api/cron` also runs it as a safety net. Push providers can instead POST
+   to `/api/assistant/inbound` with `Authorization: Bearer <ASSISTANT_INBOUND_SECRET>`.
+
+The first inbox check only picks up mail from the last 30 minutes, so turning it on never answers a backlog. The
+mailbox is never modified. Each assistant answer costs roughly $0.01–0.03 in API usage. No reseed is needed: existing
+databases get the default assistant settings.

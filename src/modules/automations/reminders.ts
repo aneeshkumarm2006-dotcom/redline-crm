@@ -13,6 +13,7 @@ import { emailUrl } from "@/lib/email/url";
 import { notifyUsers } from "@/modules/notifications/service";
 import { getSettings } from "@/modules/settings/service";
 import { findActiveUser, listAutomationStaff } from "@/modules/users/service";
+import { getAssistantContactState } from "@/modules/assistant/service";
 import { claimAutomationRun, finishAutomationRun, sendLoggedEmail } from "./service";
 import { isRecipeEnabled, type AutomationRecipeKey, type AutomationRun, type ScheduledRunSummary } from "./schema";
 import { reminderAlerts, runDetails } from "./copy";
@@ -160,6 +161,10 @@ export async function runScheduledAutomations(now = Date.now()): Promise<Schedul
           subject: { type: "lead", id }, outcome: "skipped", detail: runDetails.followUpSuperseded, ranAt });
       }
       await fire("lead_customer_follow_up", `follow-up:${id}:${latest + 1}`, { type: "lead", id }, async () => {
+        // A customer who unsubscribed, or who is talking with the assistant or staff by email, gets no templated nudge.
+        const contact = await getAssistantContactState(id, now);
+        if (contact.optedOut) return { outcome: "skipped", detail: runDetails.optedOut };
+        if (contact.inConversation) return { outcome: "skipped", detail: runDetails.inConversation };
         const lead = await getLeadForAutomation(id);
         const final = latest === days.length - 1;
         const [vehicle, dealership, template, assigned] = await Promise.all([getVehicleForAutomation(lead.vehicleId), getDealershipForAutomation(lead.dealershipId),

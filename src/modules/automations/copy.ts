@@ -78,6 +78,8 @@ export const runDetails = {
   followUp: (step: number, total: number, email: string, days: number) => `Follow-up ${step} of ${total} (day ${days}) sent to ${email}.`,
   followUpFailed: "The follow-up email could not be sent.",
   followUpSuperseded: "Skipped: a later follow-up was already due, so only that one was sent.",
+  optedOut: "Skipped: the customer asked not to receive emails.",
+  inConversation: "Skipped: the customer is in an active email conversation, so no templated follow-up was sent.",
   morning: (name: string, count: number, first: string) => `${name} alerted: ${plural(count, "appointment")} today, first at ${first}.`,
 };
 
@@ -95,7 +97,7 @@ export const reminderAlerts = {
 
 export const automationsCopy = {
   title: "Automations", intro: "When-this-then-that recipes that keep leads, stock and the team moving. Every run is logged.",
-  loading: "Loading automations…", tabs: { recipes: "Recipes", emails: "Email log" }, tabsLabel: "Automation views",
+  loading: "Loading automations…", tabs: { recipes: "Recipes", emails: "Email log", assistant: "Assistant" }, tabsLabel: "Automation views",
   groups: { leads: "Lead Coordinator", inventory: "Inventory and repairs", reminders: "Scheduled reminders" } satisfies Record<RecipeGroup, string>,
   groupHints: {
     leads: "Inquiry → follow-up email → assignment → booking → pipeline update.",

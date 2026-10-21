@@ -12,12 +12,12 @@ import { appointmentsCopy as copy } from "../copy";
 import { describeAppointments } from "./appointments-screen";
 
 type Option = { id: string; name: string };
-export type CalendarQuery = { week?: string; dealershipId?: string; salespersonId?: string };
-const iso = (instant: number) => new Date(instant).toISOString();
+export type CalendarQuery = { week?: string; date?: string; dealershipId?: string; salespersonId?: string };
+export const iso = (instant: number) => new Date(instant).toISOString();
 
-/** Calendar URL for these filters (the view is always week here). */
-function calendarHref(query: CalendarQuery) {
-  const search = new URLSearchParams({ view: "week", ...Object.fromEntries(Object.entries(query).filter(([, value]) => value)) });
+/** Calendar URL for a view (week or day) with these filters. */
+export function calendarHref(query: CalendarQuery, view: "week" | "day" = "week") {
+  const search = new URLSearchParams({ view, ...Object.fromEntries(Object.entries(query).filter(([, value]) => value)) });
   return `/crm/leads/appointments?${search}`;
 }
 
@@ -72,7 +72,8 @@ export async function AppointmentsCalendar({ query, settings, now, owner, dealer
       return <li key={day.date} aria-label={dayLabel.format(new Date(`${day.date}T12:00:00Z`))}
         className={cn("flex min-w-0 flex-col overflow-clip rounded-2xl border bg-card shadow-xs xl:min-h-56", closed && !entries.length && "bg-muted/50 shadow-none")}>
         <h3 className={cn("flex min-h-11 items-center justify-between gap-2 border-b px-3 py-2 text-sm font-semibold", isToday && "bg-brand-soft")}>
-          <span className="flex min-w-0 items-center gap-2">{dayLabel.format(new Date(`${day.date}T12:00:00Z`))}
+          <span className="flex min-w-0 items-center gap-2"><Link href={calendarHref({ ...filters, date: day.date }, "day")} aria-label={copy.openDay(dayLabel.format(new Date(`${day.date}T12:00:00Z`)))}
+            className="-mx-1 rounded-md px-1 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring">{dayLabel.format(new Date(`${day.date}T12:00:00Z`))}</Link>
             {isToday && <span className="rounded-full bg-primary px-2 py-0.5 text-[0.6875rem] font-semibold text-primary-foreground">{copy.today}</span>}</span>
           {entries.length > 0 && <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-card px-1.5 py-0.5 text-xs font-semibold tabular-nums text-foreground ring-1 ring-border">{entries.length}</span>}
         </h3>

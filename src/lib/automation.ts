@@ -10,6 +10,7 @@ import { advanceLeadForBooking, assignCreatedLead, getLeadForAutomation } from "
 import { registerLeadHandlers } from "@/modules/leads/events";
 import { dispatchNotifications, type DispatchAudience, type DispatchSummary } from "@/modules/notifications/service";
 import { registerNotificationHandlers } from "@/modules/notifications/events";
+import { registerAssistantHandlers } from "@/modules/assistant/events";
 import { findActiveUser } from "@/modules/users/service";
 
 export type RecipeOutcome = { outcome: AutomationRun["outcome"]; detail: string };
@@ -115,7 +116,7 @@ export function registerAutomation() {
     return onRecipe(name, recipe, handler as (event: AppEvent<EventName>) => Promise<RecipeOutcome>);
   }));
   const remove = [
-    ...registerLeadHandlers(), ...registerNotificationHandlers(), ...alerts,
+    ...registerLeadHandlers(), ...registerNotificationHandlers(), ...registerAssistantHandlers(), ...alerts,
     onRecipe("lead.created", "lead_auto_assign", assign),
     onRecipe("appointment.booked", "appointment_stage_update", bookingStage),
   ];

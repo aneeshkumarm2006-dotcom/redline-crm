@@ -32,6 +32,24 @@ const defaultLeadSources = [
   { key: "referral", label: "Referral", color: "#0B875E" },
 ];
 
+/**
+ * Virtual assistant (Claude) that answers customers by email. `auto` sends replies itself; `draft` writes replies for
+ * staff to approve. `answerInquiries` lets it answer the question in a new website inquiry as well as email replies.
+ */
+export const assistantModes = ["auto", "draft"] as const;
+export const assistantSettingsSchema = z.object({
+  enabled: z.boolean(),
+  mode: z.enum(assistantModes),
+  name: z.string().trim().min(1).max(40).refine((value) => !/[\r\n"<>]/.test(value), "Use a plain name."),
+  answerInquiries: z.boolean(),
+  // Automatic replies per customer per day before the assistant hands the conversation to staff (stops reply loops).
+  maxRepliesPerDay: z.number().int().min(1).max(20),
+  // Owner guidance added to the assistant's instructions: policies, tone, current promotions.
+  instructions: z.string().trim().max(4000),
+}).strict();
+export type AssistantSettings = z.infer<typeof assistantSettingsSchema>;
+export const defaultAssistantSettings: AssistantSettings = { enabled: true, mode: "auto", name: "Ava", answerInquiries: true, maxRepliesPerDay: 5, instructions: "" };
+
 export const settingsSchema = z.object({
   emailFrom: z.string().email().nullable().default(null),
   brand: z.object({
@@ -82,6 +100,7 @@ export const settingsSchema = z.object({
   customerFollowUpDays: z.array(z.number().int().min(1).max(60)).min(1).max(5).refine((days) => days.every((day, index) => index === 0 || day > days[index - 1]), "Use increasing days, e.g. 2, 5.").default([2, 5]),
   // Recipe on/off switches keyed by recipe key (see modules/automations). A missing key means on.
   automations: z.record(key, z.boolean()).default({}),
+  assistant: assistantSettingsSchema.default(defaultAssistantSettings),
   notificationRules: z.array(z.object({
     event: z.enum(eventNames),
     recipients: z.array(z.enum(["customer", "assigned_salesperson", "dealership_salespeople", "owners"])).min(1).refine(unique),

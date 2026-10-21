@@ -1,7 +1,9 @@
 import { requestNow } from "@/lib/clock";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarClock, History, Mail, Phone, PhoneCall, StickyNote } from "lucide-react";
+import { ArrowLeft, Bot, CalendarClock, History, Mail, Phone, PhoneCall, StickyNote } from "lucide-react";
+import { getConversation } from "@/modules/assistant/service";
+import { ConversationPanel } from "@/modules/assistant/components/conversation-panel";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { StatusBadgeView } from "@/components/shared/status-badge-view";
@@ -26,7 +28,7 @@ import { firstStageKey, getLead, listLeadEmails, nextOpenStage } from "../servic
 import { leadsCopy as copy, leadAge } from "../copy";
 import { LogCallControl, NoteForm, ReassignControl, StageControl } from "./lead-controls";
 
-const tabs = ["overview", "emails", "activity"] as const;
+const tabs = ["overview", "conversation", "emails", "activity"] as const;
 type Tab = (typeof tabs)[number];
 
 export async function LeadScreen({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -36,16 +38,18 @@ export async function LeadScreen({ params, searchParams }: { params: Promise<{ i
   const tab: Tab = tabs.find((entry) => entry === query.tab) ?? "overview";
   const lead = await getLead(id);
   if (!lead) notFound();
-  const [settings, dealerships, vehicle, appointments, salespeople, journey, emails] = await Promise.all([
+  const [settings, dealerships, vehicle, appointments, salespeople, journey, emails, conversation] = await Promise.all([
     getSettings(), listDealerships(), getVehicle(lead.vehicleId), listLeadAppointments(lead.id), owner ? listSalespeople() : [],
-    getLeadJourney(lead.id), listLeadEmails(lead.id),
+    getLeadJourney(lead.id), listLeadEmails(lead.id), getConversation(lead.id),
   ]);
+  const drafts = conversation?.messages.filter((entry) => entry.status === "draft").length ?? 0;
   const actorIds = [...lead.activity.map((entry) => entry.actorId), lead.assignedTo, ...appointments.map((entry) => entry.salespersonId)];
   const names = await getStaffNames([...new Set(actorIds.filter((value): value is string => Boolean(value)))]);
   const staffName = (staffId: string) => names.find((entry) => entry.id === staffId)?.name ?? copy.unknownStaff;
   // Null actors are the customer (inquiry, online booking) or an automation (assignment, CRM stage update).
   const actor = (entry: (typeof lead.activity)[number]) => entry.actorId ? staffName(entry.actorId)
-    : entry.type === "lead.created" || entry.type === "appointment.booked" ? copy.customerActor : copy.systemActor;
+    : entry.type === "lead.created" || entry.type === "appointment.booked" || entry.type === "customer_email" ? copy.customerActor
+    : entry.type === "assistant" ? copy.assistantActor(settings.assistant.name) : copy.systemActor;
   const zone = settings.booking.timeZone;
   const eligible = salespeople.filter((person) => person.active && person.dealershipId === lead.dealershipId);
   const ref = { id: lead.id, name: lead.name, stage: lead.stage, assignedTo: lead.assignedTo };
@@ -57,8 +61,8 @@ export async function LeadScreen({ params, searchParams }: { params: Promise<{ i
   const primary = settings.brand.primaryColor;
   const tabHref = (entry: Tab) => entry === "overview" ? `/crm/leads/${lead.id}` : `/crm/leads/${lead.id}?tab=${entry}`;
   const panel = "min-w-0 rounded-2xl border bg-card p-5 shadow-xs sm:p-6";
-  const touched = (type: string) => type === "note" || type === "call" || type === "email";
-  const activityIcon = (type: string) => type === "note" ? StickyNote : type === "call" ? PhoneCall : type === "email" ? Mail : History;
+  const touched = (type: string) => type === "note" || type === "call" || type === "email" || type === "customer_email" || type === "assistant";
+  const activityIcon = (type: string) => type === "note" ? StickyNote : type === "call" ? PhoneCall : type === "email" || type === "customer_email" ? Mail : type === "assistant" ? Bot : History;
   return <>
     <PageHeader eyebrow={<Link href="/crm/leads" className="-my-2 inline-flex min-h-11 items-center gap-1.5 rounded-md hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">
       <ArrowLeft aria-hidden className="size-3.5" />{copy.back}</Link>}
@@ -93,6 +97,7 @@ export async function LeadScreen({ params, searchParams }: { params: Promise<{ i
               tab === entry ? "bg-card text-foreground shadow-sm ring-1 ring-border" : "text-muted-foreground hover:text-foreground")}>
             {copy.detailTabs[entry]}
             {entry === "emails" && <span className={cn("rounded-full px-1.5 text-xs font-semibold tabular-nums", tab === entry ? "bg-muted text-foreground" : "bg-card text-muted-foreground")}>{emails.length}</span>}
+            {entry === "conversation" && drafts > 0 && <span className="rounded-full bg-primary px-1.5 text-xs font-semibold tabular-nums text-primary-foreground">{drafts}</span>}
           </Link>
         </li>)}</ul>
       </nav>
@@ -136,6 +141,7 @@ export async function LeadScreen({ params, searchParams }: { params: Promise<{ i
           </section>
         </div>
       </div>}
+      {tab === "conversation" && conversation && <ConversationPanel leadId={lead.id} view={conversation} timeZone={zone} email={lead.email} />}
       {tab === "emails" && <section aria-labelledby="lead-emails" className="space-y-4">
         <h2 id="lead-emails" className="text-lg font-semibold tracking-tight">{copy.emailsTitle}</h2>
         <EmailList emails={emails} timeZone={zone} brand={settings.brand} copy={{ label: copy.emailsTitle, empty: copy.noEmails, sent: copy.emailSent, failed: copy.emailFailed,

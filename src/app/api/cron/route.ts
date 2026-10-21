@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { runScheduledAutomations } from "@/modules/automations/reminders";
+import { runAssistantCycle } from "@/modules/assistant/inbox";
 
 const noStore = { "Cache-Control": "no-store" };
 const digest = (value: string) => createHash("sha256").update(value).digest();
@@ -15,7 +16,10 @@ export async function GET(request: Request) {
   if (!secret) return Response.json({ error: "CRON_SECRET is not configured." }, { status: 503, headers: noStore });
   if (!timingSafeEqual(digest(header), digest(`Bearer ${secret}`))) return Response.json({ error: "Unauthorized." }, { status: 401, headers: noStore });
   try {
-    return Response.json(await runScheduledAutomations(Date.now()), { headers: noStore });
+    const summary = await runScheduledAutomations(Date.now());
+    // Also a daily safety net for the virtual assistant's inbox and queue; /api/assistant/poll runs it often.
+    try { await runAssistantCycle(Date.now()); } catch { console.error("Assistant cycle failed during cron."); }
+    return Response.json(summary, { headers: noStore });
   } catch {
     console.error("Scheduled automations failed.");
     return Response.json({ error: "Scheduled automations failed." }, { status: 500, headers: noStore });

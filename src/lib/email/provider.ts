@@ -14,6 +14,10 @@ const messageSchema = z.object({
   html: z.string().min(1),
   text: z.string().optional(),
   replyTo: z.string().email().optional(),
+  // Threading: our own Message-ID, and the conversation it answers, so replies stay in the customer's thread.
+  messageId: z.string().regex(/^<[^<>\s]+@[^<>\s]+>$/).optional(),
+  inReplyTo: z.string().regex(/^<[^<>\s]+>$/).optional(),
+  references: z.array(z.string().regex(/^<[^<>\s]+>$/)).max(30).optional(),
 });
 export type EmailMessage = z.infer<typeof messageSchema>;
 export type EmailReceipt = { id: string; provider: "console" | "resend" | "smtp" };
@@ -41,8 +45,12 @@ export class ResendProvider implements EmailProvider {
   }
 
   async send(message: EmailMessage): Promise<EmailReceipt> {
-    const { fromName, ...validated } = messageSchema.parse(message);
-    const { data, error } = await this.client.emails.send({ ...validated, from: fromName ? `"${fromName}" <${validated.from}>` : validated.from });
+    const { fromName, messageId, inReplyTo, references, ...validated } = messageSchema.parse(message);
+    // Resend assigns its own Message-ID; the reply headers still thread the conversation in the customer's inbox.
+    void messageId;
+    const headers = { ...(inReplyTo ? { "In-Reply-To": inReplyTo } : {}), ...(references?.length ? { References: references.join(" ") } : {}) };
+    const { data, error } = await this.client.emails.send({ ...validated, from: fromName ? `"${fromName}" <${validated.from}>` : validated.from,
+      ...(Object.keys(headers).length ? { headers } : {}) });
     if (error || !data) throw new Error("Email delivery failed.");
     return { id: data.id, provider: "resend" };
   }
@@ -64,6 +72,7 @@ export class SmtpProvider implements EmailProvider {
   async send(message: EmailMessage): Promise<EmailReceipt> {
     const { fromName, ...validated } = messageSchema.parse(message);
     try {
+      // nodemailer sets Message-ID, In-Reply-To and References from these fields; Gmail keeps a supplied Message-ID.
       const info = await this.transport.sendMail({ ...validated, from: fromName ? { name: fromName, address: validated.from } : validated.from });
       return { id: info.messageId, provider: "smtp" };
     } catch (error) {
@@ -166,7 +175,7 @@ export async function sendAndLog(message: EmailMessage, refs: EmailRefs, provide
     // Loaded lazily: the automations module owns the Email log and itself sends through this provider.
     const { recordEmail } = await import("@/modules/automations/service");
     await recordEmail({ to: message.to, subject: message.subject, html: message.html, templateKey: refs.templateKey ?? null,
-      leadId: refs.leadId ?? null, vehicleId: refs.vehicleId ?? null, provider: receipt?.provider ?? provider,
+      leadId: refs.leadId ?? null, vehicleId: refs.vehicleId ?? null, provider: receipt?.provider ?? provider, messageId: message.messageId ?? null,
       status: failure ? "failed" : "sent", error: failure ? (failure instanceof EmailSetupError ? failure.message : DELIVERY_FAILED) : null, sentAt: new Date().toISOString() });
   } catch { console.error("Email log write failed.", { leadId: refs.leadId ?? null, templateKey: refs.templateKey ?? null }); }
   if (failure) throw failure;

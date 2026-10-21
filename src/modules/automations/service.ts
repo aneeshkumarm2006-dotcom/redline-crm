@@ -1,5 +1,7 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
+import { htmlToText } from "@/lib/email/text";
 import { connectDb } from "@/lib/db";
 import { escapeRegex } from "@/lib/regex";
 import { keySchema, objectIdSchema } from "@/lib/data-schema";
@@ -47,9 +49,43 @@ export async function sendLoggedEmail(message: EmailMessage, refs: EmailRefs = {
   // The dealership's name is the sender's display name; replies can be routed to EMAIL_REPLY_TO.
   const { brand } = await getSettings();
   const replyTo = process.env.EMAIL_REPLY_TO?.trim() || undefined;
-  const branded = { fromName: brand.companyName, ...(replyTo ? { replyTo } : {}), ...message, html: brandEmail(message.html, { brand, subject: message.subject }) };
+  // Each email gets our own Message-ID, so the virtual assistant can match a customer's reply to the lead.
+  const messageId = message.messageId ?? newMessageId(message.from);
+  const branded = { fromName: brand.companyName, ...(replyTo ? { replyTo } : {}), ...message, messageId, html: brandEmail(message.html, { brand, subject: message.subject }) };
   if (isLoggedProvider(provider)) return provider.send(branded, refs);
   return sendAndLog(branded, refs, provider instanceof ConsoleProvider ? "console" : provider instanceof SmtpProvider ? "smtp" : "resend", (value) => provider.send(value));
+}
+
+/** A unique RFC 5322 Message-ID on the sender's domain. */
+export function newMessageId(from: string) {
+  const domain = from.split("@").pop()?.toLowerCase().replace(/[^a-z0-9.-]/g, "") || "redline.invalid";
+  return `<${randomUUID()}@${domain}>`;
+}
+
+/** Internal: the lead behind any of these Message-IDs (newest send first), or null. Used to thread customer replies. */
+export async function findLeadByEmailMessageIds(messageIds: string[]) {
+  const ids = z.array(z.string().max(998)).max(50).parse(messageIds);
+  if (!ids.length) return null;
+  await connectDb();
+  const entry = await EmailLogModel.findOne({ messageId: { $in: ids }, leadId: { $ne: null } }).select("leadId").sort({ sentAt: -1 }).lean().exec();
+  return entry?.leadId ? String(entry.leadId) : null;
+}
+
+/** Internal: the newest logged email to a lead that carries a Message-ID (the thread a reply should join). */
+export async function getLatestThreadEmail(leadId: string) {
+  const id = objectIdSchema.parse(leadId);
+  await connectDb();
+  const entry = await EmailLogModel.findOne({ leadId: id, status: "sent", messageId: { $type: "string" } }).select("subject messageId sentAt").sort({ sentAt: -1 }).lean().exec();
+  return entry ? { subject: entry.subject, messageId: entry.messageId!, sentAt: entry.sentAt.toISOString() } : null;
+}
+
+/** Internal: customer-facing emails logged for a lead (oldest first), as plain text for the assistant's context. */
+export async function listLeadEmailsForAssistant(leadId: string, limit = 12) {
+  const id = objectIdSchema.parse(leadId);
+  await connectDb();
+  const documents = await EmailLogModel.find({ leadId: id, status: "sent" }).sort({ sentAt: -1, _id: -1 }).limit(limit).lean().exec();
+  return documents.reverse().map((entry) => ({ to: entry.to, subject: entry.subject, templateKey: entry.templateKey ?? null, messageId: entry.messageId ?? null,
+    sentAt: entry.sentAt.toISOString(), text: htmlToText(entry.html).slice(0, 2000) }));
 }
 
 type RunInput = z.input<typeof automationRunInputSchema>;

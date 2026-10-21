@@ -110,7 +110,7 @@ export function buildDemoData(passwordHashes: Record<string, string>, now = new 
   const email = (templateKey: string, to: string, values: Record<string, string>, at: number, refs: { leadId?: string; vehicleId?: string }, error?: string) => {
     const template = demoEmailTemplates.find((entry) => entry.key === templateKey)!;
     emailLog.push({ id: id(), to: [to], ...renderEmailTemplate(template, values), templateKey, leadId: refs.leadId ?? null, vehicleId: refs.vehicleId ?? null,
-      provider: "console", status: error ? "failed" : "sent", error: error ?? null, sentAt: iso(at) });
+      provider: "console", status: error ? "failed" : "sent", error: error ?? null, messageId: null, sentAt: iso(at) });
   };
   const notify = (userId: string, event: EventName, message: string, path: string, at: number, eventId: string) => {
     // Older alerts have been read; the last two days stay unread so every bell has something new.

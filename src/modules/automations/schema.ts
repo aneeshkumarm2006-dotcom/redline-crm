@@ -74,6 +74,8 @@ export const emailLogInputSchema = z.object({
   // Failed sends are logged too, so the Email log shows every attempt.
   status: z.enum(["sent", "failed"]).default("sent"),
   error: z.string().trim().max(1000).nullable().default(null),
+  // Our Message-ID, so a customer's reply (In-Reply-To / References) can be matched back to the lead.
+  messageId: z.string().max(998).nullable().default(null),
   sentAt: dateTimeSchema,
 }).strict();
 export const emailLogSchema = emailLogInputSchema.extend({ id: objectIdSchema });

@@ -33,3 +33,31 @@ export function startAutomationScheduler() {
   holder[scheduler].unref();
   console.info(`Automation scheduler running every ${minutes} minute(s).`);
 }
+
+const assistantTimer = Symbol.for("redline.assistantScheduler");
+type AssistantHolder = typeof globalThis & { [assistantTimer]?: ReturnType<typeof setInterval> };
+
+/**
+ * In-process timer for the virtual assistant on long-running servers: reads the reply inbox and answers waiting
+ * customer emails. Every 60 seconds by default outside production; ASSISTANT_POLL_SECONDS changes it (0 turns it off).
+ * Serverless deployments call `/api/assistant/poll` from a scheduler instead. Polls never overlap or store twice.
+ */
+export function startAssistantScheduler() {
+  if (process.env.NEXT_PHASE === "phase-production-build") return;
+  const configured = process.env.ASSISTANT_POLL_SECONDS;
+  const seconds = configured === undefined || configured === "" ? (process.env.NODE_ENV === "production" ? 0 : 60) : Number(configured);
+  if (!Number.isFinite(seconds) || seconds <= 0) return;
+  const holder = globalThis as AssistantHolder;
+  if (holder[assistantTimer]) clearInterval(holder[assistantTimer]);
+  const run = async () => {
+    try {
+      const { runAssistantCycle } = await import("@/modules/assistant/inbox");
+      await runAssistantCycle(Date.now());
+    } catch {
+      console.error("Assistant cycle failed; the next run will retry.");
+    }
+  };
+  holder[assistantTimer] = setInterval(run, Math.max(15, seconds) * 1000);
+  holder[assistantTimer].unref();
+  console.info(`Assistant inbox check running every ${Math.max(15, seconds)} second(s).`);
+}

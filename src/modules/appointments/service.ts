@@ -4,7 +4,7 @@ import { connectDb } from "@/lib/db";
 import { emit } from "@/lib/events";
 import { objectIdSchema } from "@/lib/data-schema";
 import { getSettings } from "@/modules/settings/service";
-import { getLeadForBooking, getLead } from "@/modules/leads/service";
+import { getLeadForBooking, getLead, getLeadForAutomation } from "@/modules/leads/service";
 import { requireRole } from "@/modules/auth/service";
 import { getVehicleForAutomation } from "@/modules/inventory/service";
 import { getDealershipForAutomation } from "@/modules/dealerships/service";
@@ -189,7 +189,48 @@ export async function bookForLead(input: unknown) {
 }
 
 
-export type StaffAppointment = { id: string; leadId: string; vehicleId: string; salespersonId: string; dealershipId: string; startsAt: string; endsAt: string; status: string };
+export type AssistantSlots =
+  | { state: "unassigned" }
+  | { state: "booked"; when: string; startsAt: string; salespersonName: string | null }
+  | { state: "open"; salespersonName: string; zone: string; days: { date: string; label: string; slots: { startsAt: string; label: string }[] }[] };
+
+/** Internal (virtual assistant): the lead's booking state and free slots with its assigned salesperson. */
+export async function getAssistantSlots(leadId: string): Promise<AssistantSlots> {
+  const lead = await getLeadForAutomation(leadId);
+  const [settings, existing, salesperson] = await Promise.all([getSettings(), findBooked(lead.id), bookingSalesperson(lead)]);
+  const format = formatters(settings.booking.timeZone);
+  if (existing) {
+    const host = await findActiveUser(existing.salespersonId.toString());
+    return { state: "booked", when: format.when(existing.startsAt.toISOString()), startsAt: existing.startsAt.toISOString(), salespersonName: host?.name ?? null };
+  }
+  if (!salesperson) return { state: "unassigned" };
+  const days = await getAvailableSlots(salesperson.id);
+  return {
+    state: "open", salespersonName: salesperson.name, zone: format.zone(new Date().toISOString()),
+    days: days.map((day) => ({ date: day.date, label: format.day(day.slots[0].startsAt),
+      slots: day.slots.map((slot) => ({ startsAt: slot.startsAt, label: format.time(slot.startsAt) })) })),
+  };
+}
+
+/**
+ * Internal (virtual assistant): books a free slot the customer agreed to by email, with the same rules, stage move,
+ * confirmation email and salesperson alert as the customer's own online booking (no staff actor).
+ */
+export async function bookForAssistant(leadId: string, startsAt: string) {
+  const requested = Date.parse(z.string().datetime({ offset: true }).parse(startsAt));
+  const lead = await getLeadForAutomation(leadId);
+  const [settings, existing, salesperson] = await Promise.all([getSettings(), findBooked(lead.id), bookingSalesperson(lead)]);
+  const format = formatters(settings.booking.timeZone);
+  if (existing) {
+    if (existing.startsAt.getTime() === requested) return { when: format.when(existing.startsAt.toISOString()) };
+    throw new BookingError(bookingCopy.alreadyBooked);
+  }
+  if (!salesperson) throw new BookingError(bookingCopy.unavailableBody);
+  const result = await commitBooking({ lead, salesperson, requested, actorId: null, messages: bookingCopy });
+  return { when: format.when(result.startsAt) };
+}
+
+export type StaffAppointment ={ id: string; leadId: string; vehicleId: string; salespersonId: string; dealershipId: string; startsAt: string; endsAt: string; status: string };
 function toStaffAppointment(document: { _id: unknown; leadId: unknown; vehicleId: unknown; salespersonId: unknown; dealershipId: unknown; startsAt: Date; endsAt: Date; status: string }): StaffAppointment {
   return { id: String(document._id), leadId: String(document.leadId), vehicleId: String(document.vehicleId), salespersonId: String(document.salespersonId),
     dealershipId: String(document.dealershipId), startsAt: document.startsAt.toISOString(), endsAt: document.endsAt.toISOString(), status: document.status };

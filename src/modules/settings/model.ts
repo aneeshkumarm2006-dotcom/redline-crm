@@ -37,6 +37,7 @@ const settingsModelSchema = new Schema<SettingsDocument>({
   uncontactedLeadHours: Number,
   customerFollowUpDays: { type: [Number], default: undefined },
   automations: { type: Map, of: Boolean, default: undefined },
+  assistant: { type: new Schema({ enabled: Boolean, mode: String, name: String, answerInquiries: Boolean, maxRepliesPerDay: Number, instructions: String }, embedded) },
   notificationRules: [new Schema({ event: String, recipients: [String], channels: [String] }, embedded)],
 }, { timestamps: true, strict: "throw", collection: "settings" });
 

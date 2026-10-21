@@ -60,6 +60,19 @@ export function brandEmail(body: string, { brand, subject, preheader, footer }: 
 </table></td></tr></table></body></html>`;
 }
 
+/**
+ * A personal reply in a conversation (the virtual assistant or a salesperson answering a customer): plain, like an
+ * email typed by a person, with a short signature. Carries the finished-document mark so it is never re-branded.
+ */
+export function conversationEmail(body: string, { subject, signature }: { subject: string; signature: string[] }) {
+  const lines = signature.filter(Boolean).map(escapeHtml);
+  const sign = lines.length ? `<p style="margin:20px 0 0;font-size:14px;line-height:21px;color:${MUTED}">${lines.join("<br>")}</p>` : "";
+  const paragraphs = body.replace(/<p>/g, `<p style="margin:0 0 14px;font-size:15px;line-height:23px;color:${TEXT}">`)
+    .replace(/<a href="/g, `<a style="color:${INK};text-decoration:underline" href="`);
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(subject)}</title></head>
+<body style="margin:0;padding:0;background:#ffffff">${MARK}<div style="max-width:640px;padding:16px;font-family:${FONT}">${paragraphs}${sign}</div></body></html>`;
+}
+
 /** Realistic stand-ins for every placeholder, so template previews read like a real email. */
 export const sampleEmailValues: Record<string, string> = {
   companyName: "Clairmount Auto", customerName: "Jordan Taylor", vehicleName: "2022 Jeep Grand Cherokee Limited 4x4", stockNo: "CLA-001",

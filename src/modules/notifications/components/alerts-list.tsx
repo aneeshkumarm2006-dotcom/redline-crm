@@ -2,7 +2,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { AlarmClock, BadgeDollarSign, Bell, CalendarClock, CarFront, ChevronRight, Hourglass, PhoneMissed, UserPlus, Wrench } from "lucide-react";
+import { AlarmClock, BadgeDollarSign, Bell, Bot, CalendarClock, CarFront, ChevronRight, Hand, Hourglass, Mail, PhoneMissed, UserPlus, Wrench } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import type { StaffNotification } from "../service";
@@ -15,6 +15,7 @@ const icons: Record<string, typeof Bell> = {
   "appointment.booked": CalendarClock, "vehicle.status_changed": CarFront, "vehicle.price_changed": CarFront,
   "vehicle.repair_started": Wrench, "vehicle.repair_completed": Wrench, "vehicle.sold": BadgeDollarSign,
   "reminder.aging_inventory": Hourglass, "reminder.repair_overdue": Wrench, "reminder.uncontacted_lead": PhoneMissed, "reminder.appointment_today": AlarmClock,
+  "assistant.handoff": Hand, "assistant.draft": Bot, "assistant.customer_reply": Mail,
 } satisfies Record<NotificationKind, typeof Bell>;
 
 /** `summary: false` drops the unread count and Mark all read row (e.g. a short excerpt on the dashboard). */

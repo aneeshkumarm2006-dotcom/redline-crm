@@ -40,10 +40,19 @@ export const appointmentsCopy = {
   with: (name: string) => `With ${name}`, unknownLead: "Customer", unknownVehicle: "Vehicle unavailable", unknownStaff: "Former staff member",
   loading: "Loading appointments…",
   // Week calendar (owner filters by location and salesperson)
-  views: { list: "List", week: "Week" }, viewLabel: "Appointments view",
+  views: { list: "List", day: "Day", week: "Week" }, viewLabel: "Appointments view",
   previousWeek: "Previous week", nextWeek: "Next week", thisWeek: "This week", weekNav: "Week",
   weekCount: (count: number) => `${count} appointment${count === 1 ? "" : "s"} this week`,
   closed: "Closed", noneDay: "No appointments",
   location: "Location", allLocations: "All locations", salesperson: "Salesperson", allSalespeople: "All salespeople", apply: "Apply", filters: "Filter the calendar",
   status: { booked: "Booked", completed: "Completed" } as Record<string, string>,
+  // Day schedule: one column per salesperson
+  previousDay: "Previous day", nextDay: "Next day", goToday: "Today", dayNav: "Day", openDay: (label: string) => `Open the ${label} schedule`,
+  dayCount: (count: number, people: number) => `${count} appointment${count === 1 ? "" : "s"} · ${people} salesperson${people === 1 ? "" : "s"} booked`,
+  closedDay: "The dealership is closed this day", closedDayHint: "No appointments are booked. Pick another day to see the team’s schedule.",
+  noSalespeople: "No active salespeople", noSalespeopleHint: "Salespeople at this location appear here as columns.",
+  visits: (count: number) => `${count} visit${count === 1 ? "" : "s"}`,
+  open: (count: number) => `${count} open`, full: "Fully booked",
+  hours: (opens: string, closes: string) => `Open ${opens}–${closes}`,
+  scheduleFor: (name: string) => `${name}’s schedule`,
 } as const;

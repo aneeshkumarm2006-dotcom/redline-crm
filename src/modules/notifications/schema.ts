@@ -4,7 +4,9 @@ import { dateTimeSchema, objectIdSchema } from "@/lib/data-schema";
 
 /** Alerts from scheduled reminders, which have no domain event behind them. */
 export const reminderKinds = ["reminder.aging_inventory", "reminder.repair_overdue", "reminder.uncontacted_lead", "reminder.appointment_today"] as const;
-export const notificationKinds = [...eventNames, ...reminderKinds] as const;
+/** Alerts from the virtual assistant: it handed a conversation to staff, drafted a reply to approve, or a customer wrote while it was paused. */
+export const assistantKinds = ["assistant.handoff", "assistant.draft", "assistant.customer_reply"] as const;
+export const notificationKinds = [...eventNames, ...reminderKinds, ...assistantKinds] as const;
 export type NotificationKind = (typeof notificationKinds)[number];
 
 /** Alerts page filters. Every notification kind belongs to exactly one category. */

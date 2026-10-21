@@ -35,13 +35,20 @@ export function localDate(instant: number, timeZone: string) {
   return `${p.year}-${String(p.month).padStart(2, "0")}-${String(p.day).padStart(2, "0")}`;
 }
 
+/** Minutes since local midnight of an instant in a zone (wall clock, so DST days stay aligned to the hours shown). */
+export function localMinutes(instant: number, timeZone: string) {
+  const p = zonedParts(instant, timeZone);
+  return p.hour * 60 + p.minute;
+}
+
 /** Calendar date `days` after a `YYYY-MM-DD` date (negative goes back). */
 export function addDays(date: string, days: number) {
   const [year, month, day] = date.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, day) + days * DAY).toISOString().slice(0, 10);
 }
 
-function weekday(date: string) {
+/** Settings weekday key of a `YYYY-MM-DD` date. */
+export function weekday(date: string) {
   const [year, month, day] = date.split("-").map(Number);
   // getUTCDay: 0 = Sunday; settings weekdays start on Monday.
   return weekdays[(new Date(Date.UTC(year, month - 1, day)).getUTCDay() + 6) % 7];

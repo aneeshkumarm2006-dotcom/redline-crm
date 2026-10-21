@@ -1,6 +1,6 @@
 import { requestNow } from "@/lib/clock";
 import Link from "next/link";
-import { CalendarDays, CalendarRange, List } from "lucide-react";
+import { CalendarClock, CalendarDays, CalendarRange, List } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
@@ -16,6 +16,7 @@ import { listStaffAppointments, type StaffAppointment } from "../service";
 import { localDate, startOfLocalDay } from "../slots";
 import { appointmentsCopy as copy } from "../copy";
 import { AppointmentsCalendar } from "./appointments-calendar";
+import { AppointmentsDay } from "./appointments-day";
 
 /** Resolves display names for appointment rows within the viewer's visibility. */
 export async function describeAppointments(appointments: StaffAppointment[]) {
@@ -60,7 +61,7 @@ export async function AppointmentsScreen({ searchParams }: { searchParams: Promi
   const user = await requirePageUser();
   const query = await searchParams;
   const text = (key: string) => typeof query[key] === "string" ? query[key] : undefined;
-  const week = query.view === "week";
+  const view = query.view === "week" || query.view === "day" ? query.view : "list";
   const settings = await getSettings();
   const zone = settings.booking.timeZone;
   const now = requestNow();
@@ -69,18 +70,21 @@ export async function AppointmentsScreen({ searchParams }: { searchParams: Promi
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
       <LeadsTabs active="appointments" />
       <nav aria-label={copy.viewLabel} className={segmentGroup}>
-        {(["list", "week"] as const).map((entry) => {
-          const Icon = entry === "list" ? List : CalendarRange;
-          const active = (entry === "week") === week;
-          return <Link key={entry} href={entry === "week" ? "/crm/leads/appointments?view=week" : "/crm/leads/appointments"} aria-current={active ? "page" : undefined}
+        {(["list", "day", "week"] as const).map((entry) => {
+          const Icon = { list: List, day: CalendarClock, week: CalendarRange }[entry];
+          const active = entry === view;
+          return <Link key={entry} href={entry === "list" ? "/crm/leads/appointments" : `/crm/leads/appointments?view=${entry}`} aria-current={active ? "page" : undefined}
             className={cn(segmentClass(active), "min-h-10")}>
             <Icon aria-hidden className="size-4" />{copy.views[entry]}</Link>;
         })}
       </nav>
     </div>
   </PageHeader>;
-  if (week) {
+  if (view !== "list") {
     const [dealerships, salespeople] = await Promise.all([owner ? listDealerships() : [], owner ? listSalespeople() : []]);
+    if (view === "day") return <>{header}<AppointmentsDay query={{ date: text("date"), dealershipId: text("dealershipId"), salespersonId: text("salespersonId") }} settings={settings} now={now} owner={owner}
+      self={{ id: user.id, name: user.name }} dealerships={dealerships.filter((entry) => entry.active)}
+      salespeople={salespeople.map((entry) => ({ id: entry.id, name: entry.name, dealershipId: entry.dealershipId, active: entry.active }))} /></>;
     return <>{header}<AppointmentsCalendar query={{ week: text("week"), dealershipId: text("dealershipId"), salespersonId: text("salespersonId") }} settings={settings} now={now} owner={owner}
       dealerships={dealerships.filter((entry) => entry.active)} salespeople={salespeople.map((entry) => ({ id: entry.id, name: entry.name, dealershipId: entry.dealershipId }))} /></>;
   }

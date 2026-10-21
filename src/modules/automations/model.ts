@@ -30,10 +30,12 @@ const emailLog = new Schema({
   vehicleId: { type: Schema.Types.ObjectId, ref: "Vehicle", default: null },
   provider: { type: String, enum: emailProviders, required: true },
   status: { type: String, enum: ["sent", "failed"], default: "sent" },
-  error: { type: String, default: null }, sentAt: { type: Date, required: true },
+  error: { type: String, default: null }, messageId: { type: String, default: null }, sentAt: { type: Date, required: true },
 }, { timestamps: true, strict: "throw", collection: "email_log" });
 emailLog.index({ sentAt: -1 });
 emailLog.index({ leadId: 1, sentAt: -1 });
+// Customer replies name our Message-ID in In-Reply-To / References; this finds the lead they belong to.
+emailLog.index({ messageId: 1 }, { partialFilterExpression: { messageId: { $type: "string" } } });
 emailLog.pre("validate", function () { validateRecord(this, emailLogSchema); });
 export const EmailLogModel: Model<InferSchemaType<typeof emailLog>> = (mongoose.models.EmailLog as Model<InferSchemaType<typeof emailLog>> | undefined)
   ?? mongoose.model("EmailLog", emailLog);

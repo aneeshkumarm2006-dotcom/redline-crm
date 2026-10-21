@@ -528,3 +528,23 @@ because user IDs change on reseed.
 native HTML drag and drop. A drop calls `changeLeadStageAction` with the card's stage as the
 conflict check. Cards are `role="button"` elements, because Firefox won't start a drag from a
 `<button>`. Tap-to-move stays the keyboard and phone path.
+
+## Virtual assistant
+
+`modules/assistant` owns three collections: `assistant_messages` (every inbound customer email or inquiry question
+and every outbound reply or draft; unique by Message-ID), `assistant_threads` (per lead: paused, opted out, and a
+3-minute processing lock) and `assistant_state` (the IMAP UID cursor and last poll outcome).
+
+- **Threading:** `sendLoggedEmail` gives every email a Message-ID (stored in `email_log.messageId`); the email
+  provider accepts `messageId`, `inReplyTo` and `references`. Replies use the conversational layout
+  (`conversationEmail`), not the branded one.
+- **Intake:** `inbox.pollInbox` (imapflow, by UID, read-only) and `POST /api/assistant/inbound` both call
+  `ingestInboundEmail`, which matches the lead, strips quoted history (`lib/email/text.ts`), filters automatic mail and
+  queues the message. `lead.created` (`assistant:inquiry`) queues a public inquiry's question.
+- **Queue:** `processAssistantQueue` handles pending messages per lead under the thread lock, runs after the response
+  via `after()` and on every poll; crashed runs return to the queue after 10 minutes, failures retry at 1/2/4 minutes,
+  then alert staff. Gates (off, paused, opted out, closed lead, daily cap) run before Claude.
+- **Agent:** `agent.ts` is a manual tool loop on the Messages API (beta endpoint for `fallbacks: "default"`), effort
+  `medium`, strict tools, append-only history, cached system prompt. Customer text is data inside tagged sections;
+  tools act only on the one lead; replies with links outside `APP_URL` are rejected for a rewrite. Booking goes
+  through `appointments.bookForAssistant` (same rules as online booking, no staff actor).
