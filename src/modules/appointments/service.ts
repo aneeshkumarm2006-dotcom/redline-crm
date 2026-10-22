@@ -118,9 +118,9 @@ type BookingLead = { id: string; vehicleId: string; dealershipId: string };
  * to the appointment stage, confirm with the customer and alert the salesperson). Unique indexes settle races; a repeat of the lead's own booked time is a replay.
  * After the insert, failures are logged (and reported as `failed`) rather than undoing the booking.
  */
-async function commitBooking({ lead, salesperson, requested, actorId, messages }: {
+async function commitBooking({ lead, salesperson, requested, actorId, messages, byAssistant = false }: {
   lead: BookingLead; salesperson: { id: string }; requested: number;
-  actorId: string | null; messages: { taken: string; alreadyBooked: string };
+  actorId: string | null; messages: { taken: string; alreadyBooked: string }; byAssistant?: boolean;
 }) {
   const slot = (await getAvailableSlots(salesperson.id)).flatMap((day) => day.slots).find((entry) => Date.parse(entry.startsAt) === requested);
   if (!slot) throw new BookingError(messages.taken);
@@ -141,7 +141,7 @@ async function commitBooking({ lead, salesperson, requested, actorId, messages }
   // The lead's stage move is the `appointment_stage_update` recipe, run by the `appointment.booked` handlers.
   try {
     await emit("appointment.booked", { leadId: lead.id, vehicleId: lead.vehicleId, dealershipId: lead.dealershipId,
-      appointmentId, salespersonId: salesperson.id, startsAt: slot.startsAt, endsAt: slot.endsAt, ...(actorId ? { changedBy: actorId } : {}) });
+      appointmentId, salespersonId: salesperson.id, startsAt: slot.startsAt, endsAt: slot.endsAt, ...(actorId ? { changedBy: actorId } : {}), ...(byAssistant ? { bookedBy: "assistant" as const } : {}) });
   } catch { failed = true; console.error("Appointment saved; appointment.booked handler failed.", { appointmentId }); }
   return { startsAt: slot.startsAt, failed };
 }
@@ -213,8 +213,9 @@ export async function getAssistantSlots(leadId: string): Promise<AssistantSlots>
 }
 
 /**
- * Internal (virtual assistant): books a free slot the customer agreed to by email, with the same rules, stage move,
- * confirmation email and salesperson alert as the customer's own online booking (no staff actor).
+ * Internal (virtual assistant): books a free slot the customer agreed to by email, with the same rules, stage move
+ * and salesperson alert as the customer's own online booking (no staff actor). No separate confirmation email: the
+ * assistant's reply in the thread confirms it.
  */
 export async function bookForAssistant(leadId: string, startsAt: string) {
   const requested = Date.parse(z.string().datetime({ offset: true }).parse(startsAt));
@@ -226,7 +227,7 @@ export async function bookForAssistant(leadId: string, startsAt: string) {
     throw new BookingError(bookingCopy.alreadyBooked);
   }
   if (!salesperson) throw new BookingError(bookingCopy.unavailableBody);
-  const result = await commitBooking({ lead, salesperson, requested, actorId: null, messages: bookingCopy });
+  const result = await commitBooking({ lead, salesperson, requested, actorId: null, messages: bookingCopy, byAssistant: true });
   return { when: format.when(result.startsAt) };
 }
 

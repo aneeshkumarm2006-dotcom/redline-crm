@@ -14,7 +14,8 @@ export type EventPayloads = {
   "lead.assigned": LeadRef & { salespersonId: string; previousSalespersonId: string | null; changedBy?: string };
   "lead.stage_changed": LeadRef & { previousStage: string; stage: string; changedBy: string };
   // `changedBy` is present when staff booked for the customer; the customer's own online booking omits it.
-  "appointment.booked": LeadRef & { appointmentId: string; salespersonId: string; startsAt: string; endsAt: string; changedBy?: string };
+  // `bookedBy: "assistant"` marks a booking the virtual assistant made by email; its reply is the customer's confirmation.
+  "appointment.booked": LeadRef & { appointmentId: string; salespersonId: string; startsAt: string; endsAt: string; changedBy?: string; bookedBy?: "assistant" };
   "vehicle.status_changed": VehicleRef & { previousStatus: string; status: string };
   "vehicle.price_changed": VehicleRef & { previousPrice: number; price: number };
   // Repair and sale workflows also move the status; they emit these instead of `vehicle.status_changed`.

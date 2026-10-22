@@ -536,8 +536,9 @@ and every outbound reply or draft; unique by Message-ID), `assistant_threads` (p
 3-minute processing lock) and `assistant_state` (the IMAP UID cursor and last poll outcome).
 
 - **Threading:** `sendLoggedEmail` gives every email a Message-ID (stored in `email_log.messageId`); the email
-  provider accepts `messageId`, `inReplyTo` and `references`. Replies use the conversational layout
-  (`conversationEmail`), not the branded one.
+  provider accepts `messageId`, `inReplyTo` and `references`. Replies are styled by
+  `conversationEmail` (inline links, signature block) inside the branded frame. A booking the assistant makes emits
+  `appointment.booked` with `bookedBy: "assistant"`, which skips the customer confirmation email: the reply confirms it.
 - **Intake:** `inbox.pollInbox` (imapflow, by UID, read-only) and `POST /api/assistant/inbound` both call
   `ingestInboundEmail`, which matches the lead, strips quoted history (`lib/email/text.ts`), filters automatic mail and
   queues the message. `lead.created` (`assistant:inquiry`) queues a public inquiry's question.

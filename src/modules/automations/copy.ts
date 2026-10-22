@@ -61,6 +61,7 @@ export const runDetails = {
   taken: "Someone assigned the lead first.",
   nobody: "No one to notify under the current alert rules.",
   contacted: "Staff already spoke with the customer; no follow-up email needed.",
+  assistantConfirmed: "Booked by the virtual assistant; its email reply confirmed the time.",
   emailed: (addresses: string[]) => `Email sent to ${listNames(addresses)}.`,
   alerted: (names: string[], email: boolean) => `Alerted ${listNames(names)} in the app${email ? " and by email" : ""}.`,
   emailedOnly: (names: string[]) => `Emailed ${listNames(names)}.`,

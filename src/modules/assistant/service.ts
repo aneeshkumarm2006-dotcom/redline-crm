@@ -294,7 +294,7 @@ async function buildFacts(lead: Lead, settings: Settings, newMessages: AgentHist
         const { when } = await bookForAssistant(lead.id, startsAt);
         bookedWhen = when;
         const current = await getAssistantSlots(lead.id);
-        return `Booked: ${when}${current.state === "booked" && current.salespersonName ? ` with ${current.salespersonName}` : ""}. The customer automatically gets a confirmation email.`;
+        return `Booked: ${when}${current.state === "booked" && current.salespersonName ? ` with ${current.salespersonName}` : ""}. No separate confirmation email is sent: your reply is the confirmation, so state the day, time, salesperson and dealership address.`;
       } catch (error) {
         if (error instanceof BookingError) return `Not booked: ${error.message} Check availability again and offer other times.`;
         throw error;
@@ -357,7 +357,7 @@ async function deliverReply(delivery: Delivery) {
   try {
     from = senderAddress(settings.emailFrom);
     messageId = newMessageId(from);
-    const html = conversationEmail(textToHtml(body), { subject: thread.subject, signature: delivery.signature });
+    const html = conversationEmail(textToHtml(body), { signature: delivery.signature, accent: settings.brand.primaryColor });
     await sendLoggedEmail({ from, fromName: delivery.fromName, to: [lead.email], subject: thread.subject, html, text: `${body}\n\n${delivery.signature.join("\n")}`, messageId,
       ...(thread.inReplyTo ? { inReplyTo: thread.inReplyTo } : {}), ...(thread.references.length ? { references: thread.references } : {}) },
       { leadId: lead.id, vehicleId: lead.vehicleId });

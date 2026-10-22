@@ -61,16 +61,19 @@ export function brandEmail(body: string, { brand, subject, preheader, footer }: 
 }
 
 /**
- * A personal reply in a conversation (the virtual assistant or a salesperson answering a customer): plain, like an
- * email typed by a person, with a short signature. Carries the finished-document mark so it is never re-branded.
+ * A personal reply in a conversation (the virtual assistant or a salesperson answering a customer): the body of
+ * `textToHtml` with inline styles and a signature block. Links stay inline (not buttons) since they sit mid-sentence.
+ * `sendLoggedEmail` wraps it in the branded frame; the pre-styled tags are left alone by `styleBody`.
  */
-export function conversationEmail(body: string, { subject, signature }: { subject: string; signature: string[] }) {
-  const lines = signature.filter(Boolean).map(escapeHtml);
-  const sign = lines.length ? `<p style="margin:20px 0 0;font-size:14px;line-height:21px;color:${MUTED}">${lines.join("<br>")}</p>` : "";
-  const paragraphs = body.replace(/<p>/g, `<p style="margin:0 0 14px;font-size:15px;line-height:23px;color:${TEXT}">`)
-    .replace(/<a href="/g, `<a style="color:${INK};text-decoration:underline" href="`);
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(subject)}</title></head>
-<body style="margin:0;padding:0;background:#ffffff">${MARK}<div style="max-width:640px;padding:16px;font-family:${FONT}">${paragraphs}${sign}</div></body></html>`;
+export function conversationEmail(body: string, { signature, accent }: { signature: string[]; accent: string }) {
+  const color = /^#[0-9a-f]{6}$/i.test(accent) ? accent : "#D21F3C";
+  const [name, ...rest] = signature.filter(Boolean).map(escapeHtml);
+  const sign = name ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:8px"><tr><td style="border-top:1px solid #E3E7EF;padding-top:18px">
+<div style="font-family:${DISPLAY};font-size:15px;line-height:22px;font-weight:700;color:${INK}">${name}</div>
+${rest.length ? `<div style="margin-top:4px;font-size:13px;line-height:20px;color:${MUTED}">${rest.join("<br>")}</div>` : ""}</td></tr></table>` : "";
+  const paragraphs = body.replace(/<p>/g, `<p style="margin:0 0 16px;font-size:15px;line-height:24px;color:${TEXT}">`)
+    .replace(/<a href="/g, `<a style="color:${color};font-weight:600;text-decoration:underline;word-break:break-all" href="`);
+  return `${paragraphs}${sign}`;
 }
 
 /** Realistic stand-ins for every placeholder, so template previews read like a real email. */

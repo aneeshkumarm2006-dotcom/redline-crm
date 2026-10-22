@@ -84,6 +84,12 @@ async function followUp(event: AppEvent<"lead.created">): Promise<RecipeOutcome>
   return dispatchTo("customer")(event);
 }
 
+/** A booking the virtual assistant made by email is confirmed in its reply, so the customer gets one email, not two. */
+async function confirmBooking(event: AppEvent<"appointment.booked">): Promise<RecipeOutcome> {
+  if (event.payload.bookedBy === "assistant") return skipped(runDetails.assistantConfirmed);
+  return dispatchTo("customer")(event);
+}
+
 async function bookingStage(event: AppEvent<"appointment.booked">): Promise<RecipeOutcome> {
   const { booking } = await getSettings();
   const result = await advanceLeadForBooking(event.payload.leadId, booking.appointmentStageKey, event.payload.changedBy ?? null);
@@ -112,7 +118,8 @@ export function registerAutomation() {
   const alerts = eventNames.flatMap((name) => audiences.map((audience) => {
     const recipe = alertRecipes[name]?.[audience];
     if (!recipe) return on(name, `notifications:${audience}`, (event) => dispatchNotifications(event as DomainEvent, undefined, audience).then(() => undefined));
-    const handler = name === "lead.created" && audience === "customer" ? followUp : dispatchTo(audience);
+    const handler = audience !== "customer" ? dispatchTo(audience)
+      : name === "lead.created" ? followUp : name === "appointment.booked" ? confirmBooking : dispatchTo(audience);
     return onRecipe(name, recipe, handler as (event: AppEvent<EventName>) => Promise<RecipeOutcome>);
   }));
   const remove = [

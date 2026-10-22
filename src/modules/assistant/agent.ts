@@ -81,7 +81,7 @@ const TOOLS: Anthropic.Beta.BetaToolUnion[] = [
     description: "Free appointment times with the customer's assigned salesperson. Pass a date (YYYY-MM-DD, dealership time) for every slot that day, or null for the next few slots on each upcoming open day.",
     input_schema: strictObject({ date: { type: ["string", "null"], description: "YYYY-MM-DD or null" } }) },
   { name: "book_appointment", strict: true,
-    description: "Books the customer's visit at a free time from check_availability. Only after the customer clearly agreed to that exact time. Sends them a confirmation email and alerts the salesperson.",
+    description: "Books the customer's visit at a free time from check_availability. Only after the customer clearly agreed to that exact time. Alerts the salesperson; your reply is the customer's confirmation (no separate email is sent).",
     input_schema: strictObject({ starts_at: { type: "string", description: "The slot's startsAt value exactly as returned by check_availability" } }) },
   { name: "search_inventory", strict: true,
     description: "Searches the dealership's publicly listed vehicles, e.g. to suggest alternatives. Returns up to 6 matches with price, mileage and page links.",
