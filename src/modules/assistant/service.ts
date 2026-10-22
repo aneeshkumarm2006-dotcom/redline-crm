@@ -214,14 +214,14 @@ export async function processAssistantQueue(now = Date.now(), maxLeads = 10) {
   return { leads: due.length, outcomes };
 }
 
-type Gate = { status: InboundStatus; note: string; alert: boolean };
+type Gate = { status: InboundStatus; note: string; alert: boolean; why: string };
 async function gateFor(lead: Lead, settings: Settings, thread: AssistantThread, now: number): Promise<Gate | null> {
-  if (!settings.assistant.enabled) return { status: "skipped", note: assistantNotes.off, alert: true };
-  if (thread.optedOut) return { status: "skipped", note: assistantNotes.optedOut, alert: true };
-  if (thread.paused) return { status: "skipped", note: assistantNotes.paused(thread.pausedReason), alert: true };
-  if (lead.stage === settings.wonStageKey || lead.stage === settings.lostStageKey) return { status: "skipped", note: assistantNotes.closed, alert: true };
+  if (!settings.assistant.enabled) return { status: "skipped", note: assistantNotes.off, alert: true, why: "assistant is off" };
+  if (thread.optedOut) return { status: "skipped", note: assistantNotes.optedOut, alert: true, why: "customer unsubscribed" };
+  if (thread.paused) return { status: "skipped", note: assistantNotes.paused(thread.pausedReason), alert: true, why: "assistant paused for this customer" };
+  if (lead.stage === settings.wonStageKey || lead.stage === settings.lostStageKey) return { status: "skipped", note: assistantNotes.closed, alert: true, why: "lead is closed" };
   const today = await AssistantMessageModel.countDocuments({ leadId: lead.id, direction: "outbound", author: "assistant", status: "sent", occurredAt: { $gte: new Date(now - DAY) } }).exec();
-  if (today >= settings.assistant.maxRepliesPerDay) return { status: "handed_off", note: assistantNotes.dailyLimit(settings.assistant.maxRepliesPerDay), alert: true };
+  if (today >= settings.assistant.maxRepliesPerDay) return { status: "handed_off", note: assistantNotes.dailyLimit(settings.assistant.maxRepliesPerDay), alert: true, why: "daily reply limit reached" };
   return null;
 }
 
@@ -405,7 +405,7 @@ async function processLead(leadId: string, manual: Manual | null = null): Promis
         const emailed = pending.filter((entry) => entry.source === "email");
         if (gate.alert && emailed.length) {
           await alertStaff(lead, gate.status === "handed_off" ? "assistant.handoff" : "assistant.customer_reply", `assistant-gate:${String(emailed.at(-1)!._id)}`,
-            gate.status === "handed_off" ? assistantAlerts.handoff(lead.name, gate.note, false) : assistantAlerts.customerReply(lead.name, gate.note.replace(/\.$/, "").toLowerCase()));
+            gate.status === "handed_off" ? assistantAlerts.handoff(lead.name, gate.note, false) : assistantAlerts.customerReply(lead.name, gate.why));
         }
         return { status: gate.status };
       }
@@ -433,7 +433,8 @@ async function processLead(leadId: string, manual: Manual | null = null): Promis
     try {
       decision = await runAssistantAgent(facts.context, facts.tools, { allowedOrigin: siteOrigin() });
     } catch (error) {
-      console.error("Assistant run failed.", { leadId: id, reason: error instanceof Error ? error.name : "unknown" });
+      // Message and HTTP status only: API errors never include the key, and customer text is never logged.
+      console.error("Assistant run failed.", { leadId: id, status: (error as { status?: number })?.status ?? null, reason: error instanceof Error ? error.message.slice(0, 300) : "unknown" });
       if (manual) {
         if (pendingIds.length) await AssistantMessageModel.updateMany({ _id: { $in: pendingIds } }, { $set: { status: "pending" } }).exec();
         throw new AssistantError(error instanceof AssistantSetupError ? error.message : assistantNotes.failed);
