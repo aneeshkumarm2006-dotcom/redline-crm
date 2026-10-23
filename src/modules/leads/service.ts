@@ -326,8 +326,8 @@ export async function getLeadSummaries(ids: string[]) {
   const valid = z.array(objectIdSchema).parse(ids);
   if (!valid.length) return [];
   await connectDb();
-  const documents = await LeadModel.find({ _id: { $in: valid }, ...scope(user) }).select("name phone stage vehicleId").lean().exec();
-  return documents.map((document) => ({ id: document._id.toString(), name: document.name, phone: document.phone, stage: document.stage, vehicleId: document.vehicleId.toString() }));
+  const documents = await LeadModel.find({ _id: { $in: valid }, ...scope(user) }).select("name email phone stage vehicleId").lean().exec();
+  return documents.map((document) => ({ id: document._id.toString(), name: document.name, email: document.email, phone: document.phone, stage: document.stage, vehicleId: document.vehicleId.toString() }));
 }
 
 /** Quick-find for global search: name, email or phone, within the caller's visible leads. */

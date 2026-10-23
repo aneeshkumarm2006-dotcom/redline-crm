@@ -422,7 +422,7 @@ reading `Date.now()` during render.
 vehicle, assignee, location and age; filters are search (name/email/phone), stage,
 and for owners dealership and assignee (including "unassigned"). `/crm/leads/[id]`
 shows tap-to-call/email, details, the linked vehicle card, booked appointments,
-a note form and the activity timeline. `/crm/leads/appointments` lists booked
+a note form and the activity timeline. `/crm/calendar` lists booked
 appointments for today and upcoming days in `booking.timeZone`.
 
 Visibility lives in `leads.service`: every staff read and write adds the same scope
@@ -489,7 +489,7 @@ or offline mode is included.
 
 ## Extras (v2 Stage 9)
 
-**Appointments week view.** `/crm/leads/appointments?view=week&week=YYYY-MM-DD` shows Monday to
+**Appointments week view.** `/crm/calendar?view=week&week=YYYY-MM-DD` shows Monday to
 Sunday in the settings time zone (`localWeek`, and `addDays` is now exported from `slots.ts`). It
 reads `listAppointmentsBetween` (booked + completed), so salespeople only get their own calendar.
 Owners can add `&dealershipId=` and `&salespersonId=`; unknown IDs are ignored. Closed days come from

@@ -82,7 +82,7 @@ export async function OwnerDashboard({ searchParams }: { searchParams: Promise<R
 
     <div className="grid gap-6 xl:grid-cols-12">
       <section aria-labelledby="dashboard-appointments" className="min-w-0 space-y-3 xl:col-span-5">
-        <SectionHeading id="dashboard-appointments" title={copy.todaysAppointments} action={<Link href="/crm/leads/appointments" className={textLink}>{copy.viewAppointments}</Link>} />
+        <SectionHeading id="dashboard-appointments" title={copy.todaysAppointments} action={<Link href="/crm/calendar" className={textLink}>{copy.viewAppointments}</Link>} />
         {appointments.length ? <AppointmentList appointments={appointments} timeZone={timeZone} showDate={false} showSalesperson />
           : <p className="rounded-2xl border bg-card p-5 text-sm text-muted-foreground shadow-xs">{copy.noAppointments}</p>}
       </section>

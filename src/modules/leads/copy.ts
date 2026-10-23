@@ -12,7 +12,6 @@ export const inquiryCopy = {
 
 export const leadsCopy = {
   title: "Leads", intro: "Keep every customer conversation moving.", introMine: "Your assigned customer conversations.",
-  tabs: { leads: "Leads", appointments: "Appointments" },
   filters: "Search and filters", search: "Search leads", searchPlaceholder: "Name, email or phone", stage: "Stage", dealership: "Dealership", assignee: "Assigned to",
   allStages: "All stages", allDealerships: "All dealerships", allAssignees: "Everyone", unassigned: "Unassigned",
   apply: "Apply filters", clear: "Clear filters", empty: "No leads found", emptyHint: "Try another search or clear your filters.",

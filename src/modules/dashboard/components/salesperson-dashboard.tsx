@@ -29,7 +29,7 @@ export async function SalespersonDashboard() {
 
     <KpiRow label={copy.myKpis} className="md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4">
       <StatCard label={copy.openLeads} icon={UserPlus} value={data.openLeads} hint={copy.carsWorking(data.workingVehicles)} href="/crm/leads" />
-      <StatCard label={copy.appointmentsToday} icon={CalendarClock} value={appointments.length} href="/crm/leads/appointments" />
+      <StatCard label={copy.appointmentsToday} icon={CalendarClock} value={appointments.length} href="/crm/calendar?view=day" />
       <StatCard label={copy.mySales} icon={CarFront} value={month.target === null ? month.units : `${month.units} / ${month.target}`}
         hint={month.target === null ? copy.noTarget : copy.toGo(month.target - month.units)} href={mySales} />
       <StatCard label={copy.myCommission} icon={BadgeDollarSign} value={month.commission} format="money" hint={copy.commissionFrom(formatValue(month.revenue, "money"))} href={mySales} />
@@ -37,7 +37,7 @@ export async function SalespersonDashboard() {
 
     <div className="grid gap-6 xl:grid-cols-12">
       <section aria-labelledby="dashboard-appointments" className="min-w-0 space-y-3 xl:col-span-5">
-        <SectionHeading id="dashboard-appointments" title={copy.todaysAppointments} action={<Link href="/crm/leads/appointments" className={textLink}>{copy.viewAppointments}</Link>} />
+        <SectionHeading id="dashboard-appointments" title={copy.todaysAppointments} action={<Link href="/crm/calendar" className={textLink}>{copy.viewAppointments}</Link>} />
         {appointments.length ? <AppointmentList appointments={appointments} timeZone={timeZone} showDate={false} showSalesperson={false} />
           : <p className={empty}>{copy.noAppointments}</p>}
       </section>

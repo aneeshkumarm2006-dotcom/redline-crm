@@ -20,3 +20,8 @@ export type BookingResult = { ok: true; when: string } | { ok: false; message: s
 // Staff booking on the customer's behalf: lead visibility and the salesperson are checked by the service.
 export const staffBookingSchema = z.object({ leadId: objectIdSchema, startsAt: dateTimeSchema }).strict();
 export type StaffBookingResult = { ok: true; when: string; warning?: string } | { ok: false; message: string };
+
+// Calendar actions on an existing appointment: the service checks the caller may manage it.
+export const appointmentStatusInputSchema = z.object({ id: objectIdSchema, status: z.enum(appointmentStatuses) }).strict();
+export const rescheduleInputSchema = z.object({ id: objectIdSchema, startsAt: dateTimeSchema }).strict();
+export type AppointmentActionResult = { ok: true; message: string } | { ok: false; message: string };

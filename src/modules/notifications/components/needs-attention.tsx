@@ -21,7 +21,7 @@ export function NeedsAttention({ data, repairStatusKey, dealershipId, variant = 
     { key: "unassigned", icon: UserX, title: copy.attention.unassigned(data.unassigned), hint: copy.attention.unassignedHint,
       href: "/crm/coordinator#queue-unassigned", tone: "danger" as const, count: owner ? data.unassigned : 0 },
     { key: "appointments", icon: CalendarClock, title: copy.attention.appointments(data.appointmentsToday), hint: copy.attention.appointmentsHint,
-      href: "/crm/leads/appointments", tone: "warning" as const, count: data.appointmentsToday },
+      href: "/crm/calendar?view=day", tone: "warning" as const, count: data.appointmentsToday },
     { key: "overdue", icon: Wrench, title: copy.attention.overdue(data.overdue), hint: copy.attention.overdueHint(repairOverdueDays),
       href: owner && !dealershipId ? "/crm/garages" : `/crm/inventory?status=${encodeURIComponent(repairStatusKey)}${location}`, tone: "danger" as const, count: data.overdue },
     { key: "aging", icon: CarFront, title: copy.attention.aging(data.aging, warnDays), hint: copy.attention.agingHint(data.critical, criticalDays),

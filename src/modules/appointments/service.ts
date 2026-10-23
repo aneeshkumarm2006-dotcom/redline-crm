@@ -4,15 +4,15 @@ import { connectDb } from "@/lib/db";
 import { emit } from "@/lib/events";
 import { objectIdSchema } from "@/lib/data-schema";
 import { getSettings } from "@/modules/settings/service";
-import { getLeadForBooking, getLead, getLeadForAutomation } from "@/modules/leads/service";
+import { getLeadForBooking, getLead, getLeadForAutomation, appendLeadActivity } from "@/modules/leads/service";
 import { requireRole } from "@/modules/auth/service";
 import { getVehicleForAutomation } from "@/modules/inventory/service";
 import { getDealershipForAutomation } from "@/modules/dealerships/service";
 import { findActiveUser } from "@/modules/users/service";
 import { AppointmentModel } from "./model";
-import { appointmentSchema, bookingInputSchema, staffBookingSchema } from "./schema";
+import { appointmentSchema, appointmentStatusInputSchema, appointmentStatuses, bookingInputSchema, rescheduleInputSchema, staffBookingSchema } from "./schema";
 import { buildSlotDays } from "./slots";
-import { bookingCopy, staffBookingCopy } from "./copy";
+import { appointmentActionCopy, bookingCopy, staffBookingCopy } from "./copy";
 
 export class BookingError extends Error {}
 
@@ -248,18 +248,88 @@ export async function listStaffAppointments(from: string, limit = 100) {
 }
 
 /**
- * Booked or completed appointments starting in [from, to), soonest first (team and profile stats).
- * Owners may narrow to one salesperson; salespeople always get only their own.
+ * Appointments starting in [from, to), soonest first: booked and completed by default (team and profile stats);
+ * the calendar can ask for cancelled and no-show visits too. Owners may narrow to one salesperson; salespeople
+ * always get only their own.
  */
-export async function listAppointmentsBetween(from: string, to: string, salespersonId?: string) {
+export async function listAppointmentsBetween(from: string, to: string, salespersonId?: string, statuses: readonly string[] = ["booked", "completed"]) {
   const user = await requireRole();
-  const range = z.object({ from: z.string().datetime({ offset: true }), to: z.string().datetime({ offset: true }), salespersonId: objectIdSchema.optional() })
-    .parse({ from, to, salespersonId });
+  const range = z.object({ from: z.string().datetime({ offset: true }), to: z.string().datetime({ offset: true }), salespersonId: objectIdSchema.optional(),
+    statuses: z.array(z.enum(appointmentStatuses)).min(1) }).parse({ from, to, salespersonId, statuses });
   const person = user.role === "owner" ? range.salespersonId : user.id;
   await connectDb();
-  const documents = await AppointmentModel.find({ status: { $in: ["booked", "completed"] }, startsAt: { $gte: new Date(range.from), $lt: new Date(range.to) }, ...(person ? { salespersonId: person } : {}) })
+  const documents = await AppointmentModel.find({ status: { $in: range.statuses }, startsAt: { $gte: new Date(range.from), $lt: new Date(range.to) }, ...(person ? { salespersonId: person } : {}) })
     .sort({ startsAt: 1, _id: 1 }).limit(1000).lean().exec();
   return documents.map(toStaffAppointment);
+}
+
+/** An appointment the caller may manage: owners any, salespeople only their own. */
+async function manageableAppointment(id: string) {
+  const user = await requireRole();
+  await connectDb();
+  const document = await AppointmentModel.findOne({ _id: objectIdSchema.parse(id), ...(user.role === "owner" ? {} : { salespersonId: user.id }) }).lean().exec();
+  if (!document) throw new BookingError(appointmentActionCopy.notFound);
+  return { user, appointment: toStaffAppointment(document) };
+}
+
+const isDuplicate = (error: unknown) => error instanceof Error && "code" in error && error.code === 11000;
+
+/**
+ * Calendar status change (completed, no-show, cancelled, or back to booked). Restoring re-checks the unique
+ * indexes, so a lead that has since rebooked or a slot that was retaken refuses cleanly. The change is noted on the lead.
+ */
+export async function setAppointmentStatus(input: unknown) {
+  const data = appointmentStatusInputSchema.parse(input);
+  const { user, appointment } = await manageableAppointment(data.id);
+  if (appointment.status === data.status) return { message: appointmentActionCopy.status[data.status] };
+  try {
+    await AppointmentModel.updateOne({ _id: appointment.id }, { $set: { status: data.status } }).exec();
+  } catch (error) {
+    if (isDuplicate(error)) throw new BookingError(appointmentActionCopy.restoreConflict);
+    throw error;
+  }
+  const { timeZone } = (await getSettings()).booking;
+  await appendLeadActivity(appointment.leadId, { type: "note", message: appointmentActionCopy.statusNote(data.status, formatters(timeZone).when(appointment.startsAt)),
+    occurredAt: new Date().toISOString(), actorId: user.id }).catch(() => console.error("Appointment status saved; lead activity note failed.", { id: appointment.id }));
+  return { message: appointmentActionCopy.status[data.status] };
+}
+
+/** Free times with the appointment's salesperson for moving a booked visit. */
+export async function getRescheduleOptions(id: string) {
+  const { appointment } = await manageableAppointment(id);
+  if (appointment.status !== "booked") throw new BookingError(appointmentActionCopy.notBooked);
+  const [settings, host] = await Promise.all([getSettings(), findActiveUser(appointment.salespersonId)]);
+  const format = formatters(settings.booking.timeZone);
+  const days = await getAvailableSlots(appointment.salespersonId);
+  return {
+    salespersonName: host?.name ?? null, zone: format.zone(new Date().toISOString()),
+    days: days.map((day) => ({ date: day.date, label: format.day(day.slots[0].startsAt),
+      slots: day.slots.map((slot) => ({ startsAt: slot.startsAt, label: format.time(slot.startsAt), when: format.when(slot.startsAt) })) })),
+  };
+}
+
+/**
+ * Moves a booked visit to another free slot with the same salesperson. The unique slot index settles races.
+ * No customer email is sent; the calendar tells staff to let the customer know.
+ */
+export async function rescheduleAppointment(input: unknown) {
+  const data = rescheduleInputSchema.parse(input);
+  const { user, appointment } = await manageableAppointment(data.id);
+  if (appointment.status !== "booked") throw new BookingError(appointmentActionCopy.notBooked);
+  const requested = Date.parse(data.startsAt);
+  const slot = (await getAvailableSlots(appointment.salespersonId)).flatMap((day) => day.slots).find((entry) => Date.parse(entry.startsAt) === requested);
+  if (!slot) throw new BookingError(staffBookingCopy.taken);
+  try {
+    await AppointmentModel.updateOne({ _id: appointment.id, status: "booked" }, { $set: { startsAt: slot.startsAt, endsAt: slot.endsAt } }).exec();
+  } catch (error) {
+    if (isDuplicate(error)) throw new BookingError(staffBookingCopy.taken);
+    throw error;
+  }
+  const format = formatters((await getSettings()).booking.timeZone);
+  const when = format.when(slot.startsAt);
+  await appendLeadActivity(appointment.leadId, { type: "note", message: appointmentActionCopy.movedNote(format.when(appointment.startsAt), when),
+    occurredAt: new Date().toISOString(), actorId: user.id }).catch(() => console.error("Appointment moved; lead activity note failed.", { id: appointment.id }));
+  return { when };
 }
 
 /** Internal reminder read: booked appointments starting in [from, to), soonest first. */

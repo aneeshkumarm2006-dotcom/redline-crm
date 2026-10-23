@@ -20,7 +20,7 @@ import { getStaffNames, listSalespeople } from "@/modules/users/service";
 import { listLeads, listPipelineLeads } from "../service";
 import { leadFilterSchema, leadViews, type LeadFilters, type LeadView, type StaffLead } from "../schema";
 import { leadsCopy as copy, leadAge } from "../copy";
-import { LeadsTabs, segmentClass, segmentGroup } from "./leads-tabs";
+import { segmentClass, segmentGroup } from "./segments";
 import { PipelineCard, type PipelineCardData } from "./pipeline-card";
 import { PipelineDndProvider, PipelineDropColumn } from "./pipeline-dnd";
 import { listMyViews } from "@/modules/views/service";
@@ -61,7 +61,6 @@ export async function LeadsScreen({ searchParams }: { searchParams: LeadsSearch 
         <Button asChild className="min-h-11 gap-2"><Link href="/crm/leads/new"><Plus aria-hidden className="size-4" />{copy.newLead}</Link></Button>
       </>}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <LeadsTabs active="leads" />
         <nav aria-label={copy.viewLabel} className={segmentGroup}>
           {leadViews.map((entry) => {
             const Icon = entry === "board" ? Kanban : List;

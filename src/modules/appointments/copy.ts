@@ -34,18 +34,24 @@ export const staffBookingCopy = {
 } as const;
 
 export const appointmentsCopy = {
-  intro: "Booked customer visits.", introMine: "Your booked customer visits.",
+  title: "Calendar", intro: "Booked customer visits.", introMine: "Your booked customer visits.",
   today: "Today", upcoming: "Upcoming", noneToday: "No appointments today.", noneUpcoming: "No upcoming appointments.",
   empty: "No appointments booked", emptyHint: "When a customer books from their follow-up email, the visit appears here.",
   with: (name: string) => `With ${name}`, unknownLead: "Customer", unknownVehicle: "Vehicle unavailable", unknownStaff: "Former staff member",
   loading: "Loading appointments…",
-  // Week calendar (owner filters by location and salesperson)
-  views: { list: "List", day: "Day", week: "Week" }, viewLabel: "Appointments view",
+  // Calendar views (owner filters by location and salesperson)
+  views: { month: "Month", week: "Week", day: "Day", list: "List" }, viewLabel: "Calendar view",
   previousWeek: "Previous week", nextWeek: "Next week", thisWeek: "This week", weekNav: "Week",
+  previousMonth: "Previous month", nextMonth: "Next month", thisMonth: "This month", monthNav: "Month",
   weekCount: (count: number) => `${count} appointment${count === 1 ? "" : "s"} this week`,
+  monthCount: (count: number) => `${count} appointment${count === 1 ? "" : "s"} this month`,
+  more: (count: number) => `+${count} more`,
   closed: "Closed", noneDay: "No appointments",
   location: "Location", allLocations: "All locations", salesperson: "Salesperson", allSalespeople: "All salespeople", apply: "Apply", filters: "Filter the calendar",
-  status: { booked: "Booked", completed: "Completed" } as Record<string, string>,
+  showAll: "Show cancelled and no-shows", legend: "Status key", jumpTo: "Go to date", miniMonth: "Pick a day",
+  newAppointment: "New appointment",
+  shortcuts: "Shortcuts: ← → move, T today, M W D L switch view",
+  status: { booked: "Booked", completed: "Completed", no_show: "No-show", cancelled: "Cancelled" } as Record<string, string>,
   // Day schedule: one column per salesperson
   previousDay: "Previous day", nextDay: "Next day", goToday: "Today", dayNav: "Day", openDay: (label: string) => `Open the ${label} schedule`,
   dayCount: (count: number, people: number) => `${count} appointment${count === 1 ? "" : "s"} · ${people} salesperson${people === 1 ? "" : "s"} booked`,
@@ -55,4 +61,27 @@ export const appointmentsCopy = {
   open: (count: number) => `${count} open`, full: "Fully booked",
   hours: (opens: string, closes: string) => `Open ${opens}–${closes}`,
   scheduleFor: (name: string) => `${name}’s schedule`,
+} as const;
+
+/** Appointment details sheet: status changes, rescheduling and booking from the calendar. */
+export const appointmentActionCopy = {
+  details: "Appointment details", vehicle: "Vehicle", salesperson: "Salesperson", phone: "Phone", email: "Email", when: "When",
+  openLead: "Open lead", call: "Call", sendEmail: "Email", close: "Close", back: "Back",
+  complete: "Mark completed", noShow: "Mark no-show", cancel: "Cancel visit", restore: "Restore booking", reschedule: "Reschedule",
+  confirmCancel: "Cancel this visit?", confirmCancelHint: "The slot opens up again. The customer is not emailed, so let them know.", keep: "Keep it", yesCancel: "Yes, cancel",
+  rescheduleTitle: "Pick a new time", rescheduleHint: (name: string | null) => name ? `Free times with ${name}. The customer is not emailed, so let them know.` : "The customer is not emailed, so let them know.",
+  moveHere: "Move to this time", moving: "Moving…", saving: "Saving…",
+  loading: "Loading available times…", loadError: "Times could not be loaded. Try again.", retry: "Try again",
+  moved: (when: string) => `Moved to ${when}.`,
+  status: { booked: "Booking restored.", completed: "Marked completed.", no_show: "Marked as a no-show.", cancelled: "Visit cancelled." } as Record<string, string>,
+  statusNote: (status: string, when: string) => ({ booked: `Appointment for ${when} restored.`, completed: `Appointment for ${when} marked completed.`,
+    no_show: `Customer did not show for the ${when} appointment.`, cancelled: `Appointment for ${when} cancelled.` })[status] ?? `Appointment for ${when} updated.`,
+  movedNote: (from: string, to: string) => `Appointment moved from ${from} to ${to}.`,
+  notFound: "This appointment was not found or is not on your calendar.",
+  notBooked: "Only booked visits can be rescheduled.",
+  restoreConflict: "This customer already has another booking, or that time was retaken.",
+  error: "That didn’t save. Please try again.",
+  // New appointment from the calendar
+  newTitle: "New appointment", newHint: "Find the customer, then pick a time with their salesperson.",
+  search: "Search leads", searchPlaceholder: "Name, email or phone", searching: "Searching…", noMatches: "No matching leads.", change: "Change customer",
 } as const;

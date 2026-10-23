@@ -193,7 +193,7 @@ export async function runScheduledAutomations(now = Date.now()): Promise<Schedul
         const customer = (await getLeadForAutomation(first.leadId)).name;
         const at = time.format(new Date(first.startsAt));
         await notifyUsers({ userIds: [person.id], event: "reminder.appointment_today", eventId: `appt-today:${date}`,
-          message: reminderAlerts.morning(list.length, at, customer), link: "/crm/leads/appointments" });
+          message: reminderAlerts.morning(list.length, at, customer), link: "/crm/calendar?view=day" });
         return { outcome: "success", detail: runDetails.morning(person.name, list.length, at) };
       });
     }

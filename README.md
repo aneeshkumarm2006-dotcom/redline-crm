@@ -387,7 +387,7 @@ print "a.m.." after the time; a full `npm run seed` installs the corrected wordi
   all and can filter by location and assignee. Open a lead to call/email the
   customer, change the stage, add a note, see the vehicle, appointment and activity.
   The owner can reassign to an active salesperson at the same location.
-- **Appointments** (`/crm/leads/appointments`): today and upcoming booked visits.
+- **Appointments** (`/crm/calendar`): today and upcoming booked visits.
 - **Dashboard** (`/crm`): for the owner, the Command Center (KPIs, units by status,
   Needs attention, team leaderboard, sales by month, lead funnel, aging buckets,
   inventory by location, today's appointments, recent activity) with a location

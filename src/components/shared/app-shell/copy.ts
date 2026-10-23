@@ -18,6 +18,7 @@ export const shellCopy = {
     dashboard: { label: "Dashboard", href: "/crm" },
     inventory: { label: "Inventory", href: "/crm/inventory" },
     leads: { label: "Leads", href: "/crm/leads" },
+    calendar: { label: "Calendar", href: "/crm/calendar" },
     team: { label: "Team", href: "/crm/team" },
     coordinator: { label: "Lead Coordinator", href: "/crm/coordinator" },
     automations: { label: "Automations", href: "/crm/automations" },
@@ -36,10 +37,10 @@ export const shellCopy = {
 export type ShellSection = keyof typeof shellCopy.sections;
 
 /**
- * Role-aware navigation. `primary` fills the mobile bar (with "More" making five slots);
- * `more` opens in a sheet on mobile and is listed under the primary links on desktop.
+ * Role-aware navigation. The desktop sidebar lists `primary`, then `more` under a heading. On mobile the
+ * first four `primary` links fill the bar and anything after them joins `more` in the "More" sheet.
  */
 export const shellNavigation: Record<Role, { primary: ShellSection[]; more: ShellSection[] }> = {
-  owner: { primary: ["dashboard", "inventory", "leads", "team"], more: ["coordinator", "automations", "garages", "alerts", "settings"] },
-  salesperson: { primary: ["dashboard", "leads", "inventory", "alerts"], more: [] },
+  owner: { primary: ["dashboard", "inventory", "leads", "calendar", "team"], more: ["coordinator", "automations", "garages", "alerts", "settings"] },
+  salesperson: { primary: ["dashboard", "leads", "calendar", "inventory", "alerts"], more: [] },
 };

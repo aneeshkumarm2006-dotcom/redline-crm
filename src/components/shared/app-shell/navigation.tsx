@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, CarFront, ChevronRight, Ellipsis, LayoutDashboard, Route, Settings, Users, UsersRound, Wrench, Zap } from "lucide-react";
+import { Bell, CalendarDays, CarFront, ChevronRight, Ellipsis, LayoutDashboard, Route, Settings, Users, UsersRound, Wrench, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { Role } from "@/modules/users/schema";
@@ -11,7 +11,7 @@ import { shellCopy, shellNavigation, type ShellSection } from "./copy";
 import { brandTheme } from "./theme";
 
 const sectionIcons: Record<ShellSection, typeof Bell> = {
-  dashboard: LayoutDashboard, inventory: CarFront, leads: UsersRound, team: Users,
+  dashboard: LayoutDashboard, inventory: CarFront, leads: UsersRound, calendar: CalendarDays, team: Users,
   coordinator: Route, automations: Zap, garages: Wrench, alerts: Bell, settings: Settings,
 };
 
@@ -51,7 +51,8 @@ export function SidebarNavigation({ role }: { role: Role }) {
 export function BottomNavigation({ role, primaryColor }: { role: Role; primaryColor: string }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const { primary, more } = shellNavigation[role];
+  const primary = shellNavigation[role].primary.slice(0, 4);
+  const more = [...shellNavigation[role].primary.slice(4), ...shellNavigation[role].more];
   const moreActive = more.some((key) => isActive(pathname, key));
   const slot = "flex min-h-12 min-w-11 flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 text-[0.6875rem] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
   const tone = (active: boolean) => active ? "text-primary" : "text-muted-foreground hover:text-foreground";
