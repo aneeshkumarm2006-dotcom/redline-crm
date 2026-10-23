@@ -7,7 +7,10 @@ import { appointmentsCopy as copy } from "../copy";
 import { AppointmentTrigger } from "./appointment-details";
 import { CalendarToolbar, calendarFilters, calendarHref, loadCalendarAppointments, mondayOf, parseDate, type CalendarContext } from "./calendar-shared";
 import { statusTone } from "./calendar-tone";
-import { PX, clock, minutesOf, placeInLanes } from "./time-grid";
+import { PX, clock, minutesOf, overlapGroups } from "./time-grid";
+
+// Rows in an overlap card are 16px tall with a 2px gap, inside 2px of padding.
+const ROW = 18;
 
 /**
  * Week view, Monday to Sunday in the dealership time zone. Wide screens get a time grid (one column per day, visits
@@ -102,24 +105,51 @@ export async function AppointmentsCalendar({ context }: { context: CalendarConte
         {days.map((day) => {
           const opens = day.hours ? minutesOf(day.hours.opensAt) : null;
           const closes = day.hours ? minutesOf(day.hours.closesAt) : null;
-          const entries = placeInLanes(timed.filter((entry) => entry.date === day.date));
+          const groups = overlapGroups(timed.filter((entry) => entry.date === day.date));
+          const dayHref = calendarHref({ ...filters, date: day.date }, "day");
           return <section key={day.date} aria-label={label(day.date)} className="relative border-r last:border-r-0" style={{ height }}>
             {opens === null || closes === null ? <div aria-hidden className="absolute inset-0 bg-muted/60" /> : <>
               {opens > start && <div aria-hidden className="absolute inset-x-0 top-0 bg-muted/60" style={{ height: y(opens) }} />}
               {closes < end && <div aria-hidden className="absolute inset-x-0 bottom-0 bg-muted/60" style={{ top: y(closes) }} />}
             </>}
             {marks.slice(1, -1).map((mark) => <div key={mark} aria-hidden className="absolute inset-x-0 border-t" style={{ top: y(mark) }} />)}
-            {day.date === today && nowMinutes >= start && nowMinutes <= end && <div aria-hidden className="absolute inset-x-0 z-10 border-t-2 border-primary" style={{ top: y(nowMinutes) }}>
+            {marks.slice(0, -1).map((mark) => <div key={`${mark}-half`} aria-hidden className="absolute inset-x-0 border-t border-dashed border-border/60" style={{ top: y(mark + 30) }} />)}
+            {day.date === today && nowMinutes >= start && nowMinutes <= end && <div aria-hidden className="pointer-events-none absolute inset-x-0 z-[5] border-t-2 border-primary" style={{ top: y(nowMinutes) }}>
               <span className="absolute -left-1 -top-[5px] size-2 rounded-full bg-primary" />
             </div>}
-            <ol>{entries.map((entry) => <li key={entry.id} data-appointment={entry.id}>
-              <AppointmentTrigger appointment={entry} zone={zone} primaryColor={primaryColor}
-                style={{ top: y(entry.from) + 1, height: Math.max((entry.to - entry.from) * PX - 2, 30), left: `calc(${(entry.lane / entry.lanes) * 100}% + 3px)`, width: `calc(${100 / entry.lanes}% - 6px)` }}
-                className={cn("absolute z-10 block overflow-hidden rounded-lg border-l-4 px-1.5 py-1 transition-shadow hover:z-20 hover:shadow-md focus-visible:z-20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", statusTone(entry.status).block)}>
-                <span className="block truncate text-[0.6875rem] font-semibold tabular-nums">{time.format(new Date(entry.startsAt))}</span>
-                <span className="block truncate text-xs font-medium leading-tight">{entry.leadName}</span>
-                <span className="block truncate text-[0.6875rem] text-muted-foreground">{owner ? entry.salespersonName : entry.vehicleName}</span>
-              </AppointmentTrigger></li>)}</ol>
+            {/* A lone visit fills the column; overlapping visits share one card with a row each, since side-by-side lanes are unreadable at this width. */}
+            <ol>{groups.map((group) => {
+              const height = (group.to - group.from) * PX - 2;
+              if (group.entries.length === 1) {
+                const [entry] = group.entries;
+                return <li key={entry.id} data-appointment={entry.id}>
+                  <AppointmentTrigger appointment={entry} zone={zone} primaryColor={primaryColor} style={{ top: y(group.from) + 1, height: Math.max(height, 22) }}
+                    className={cn("absolute inset-x-1 z-10 block overflow-hidden rounded-lg border-l-4 px-2 transition-shadow hover:z-20 hover:shadow-md focus-visible:z-20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+                      height < 40 ? "py-0.5" : "py-1", statusTone(entry.status).block)}>
+                    {height < 40 ? <span className="flex min-w-0 items-baseline gap-1.5 text-[0.6875rem] leading-4">
+                      <span className="shrink-0 font-semibold tabular-nums">{time.format(new Date(entry.startsAt))}</span><span className="truncate font-medium">{entry.leadName}</span>
+                    </span> : <>
+                      <span className="block truncate text-[0.6875rem] font-semibold leading-4 tabular-nums">{time.format(new Date(entry.startsAt))}</span>
+                      <span className="block truncate text-xs font-medium leading-4">{entry.leadName}</span>
+                      {height >= 56 && <span className="block truncate text-[0.6875rem] leading-4 text-muted-foreground">{owner ? entry.salespersonName : entry.vehicleName}</span>}
+                    </>}
+                  </AppointmentTrigger></li>;
+              }
+              const fits = Math.max(1, Math.floor((Math.max(height, 22) - 2) / ROW));
+              const shown = group.entries.length > fits ? group.entries.slice(0, fits - 1) : group.entries;
+              return <li key={group.entries[0].id} aria-label={copy.visits(group.entries.length)} style={{ top: y(group.from) + 1, height: Math.max(height, 22) }}
+                className="absolute inset-x-1 z-10 flex flex-col gap-0.5 overflow-hidden rounded-lg bg-card p-0.5 shadow-xs ring-1 ring-border hover:z-20 hover:shadow-md">
+                <ul className="flex flex-col gap-0.5">{shown.map((entry) => <li key={entry.id} data-appointment={entry.id}>
+                  <AppointmentTrigger appointment={entry} zone={zone} primaryColor={primaryColor}
+                    className={cn("flex h-4 w-full min-w-0 items-center gap-1 rounded px-1 text-[0.6875rem] leading-4 transition-colors hover:brightness-95 focus-visible:outline-2 focus-visible:outline-ring", statusTone(entry.status).chip)}>
+                    <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", statusTone(entry.status).dot)} />
+                    <span className="shrink-0 font-semibold tabular-nums">{time.format(new Date(entry.startsAt))}</span>
+                    <span className="truncate">{entry.leadName}</span>
+                  </AppointmentTrigger></li>)}</ul>
+                {shown.length < group.entries.length && <Link href={dayHref} className="block h-4 shrink-0 rounded px-1 text-[0.6875rem] font-semibold leading-4 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">
+                  {copy.more(group.entries.length - shown.length)}</Link>}
+              </li>;
+            })}</ol>
           </section>;
         })}
       </div>
