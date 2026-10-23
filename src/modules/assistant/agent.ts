@@ -138,6 +138,12 @@ export function contextMessage(context: AgentContext) {
   ].join("\n\n");
 }
 
+/** Reasoning effort per call: "low" (default) keeps simple customer replies to a few seconds; raise it for harder inboxes. */
+function assistantEffort(): "low" | "medium" | "high" {
+  const value = process.env.ASSISTANT_EFFORT?.trim();
+  return value === "medium" || value === "high" ? value : "low";
+}
+
 /** Links Claude may include: the booking link and pages on this site. Everything else is rejected for a rewrite. */
 function disallowedLinks(body: string, allowedOrigin: string | null) {
   return (body.match(/https?:\/\/[^\s<>"')]+/g) ?? []).filter((url) => !allowedOrigin || !url.startsWith(allowedOrigin));
@@ -147,7 +153,8 @@ export async function runAssistantAgent(context: AgentContext, tools: AgentTools
   if (!options.client && !process.env.ANTHROPIC_API_KEY?.trim() && !process.env.ANTHROPIC_AUTH_TOKEN?.trim()) {
     throw new AssistantSetupError("ANTHROPIC_API_KEY is not set, so the assistant cannot reply.");
   }
-  const client = options.client ?? new Anthropic({ maxRetries: 3, timeout: 120_000 });
+  // Replies have a time budget (customers expect an answer within ~40s), so calls fail fast and retry once.
+  const client = options.client ?? new Anthropic({ maxRetries: 1, timeout: 30_000 });
   const model = process.env.ASSISTANT_MODEL?.trim() || DEFAULT_ASSISTANT_MODEL;
   const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: contextMessage(context) }];
   const decision: AgentDecision = { action: "no_reply", body: "", reason: "", handoff: null, optOut: false, booked: null,
@@ -158,7 +165,7 @@ export async function runAssistantAgent(context: AgentContext, tools: AgentTools
       model, max_tokens: 8000,
       // A refused request is re-run on a fallback model instead of stopping (server-side, routed by refusal category).
       betas: ["server-side-fallback-2026-07-01"], fallbacks: "default",
-      output_config: { effort: "medium" },
+      output_config: { effort: assistantEffort() },
       system: [{ type: "text", text: SYSTEM_PROMPT(context), cache_control: { type: "ephemeral" } }],
       tools: TOOLS,
       messages,

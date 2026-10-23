@@ -39,13 +39,13 @@ type AssistantHolder = typeof globalThis & { [assistantTimer]?: ReturnType<typeo
 
 /**
  * In-process timer for the virtual assistant on long-running servers: reads the reply inbox and answers waiting
- * customer emails. Every 60 seconds by default outside production; ASSISTANT_POLL_SECONDS changes it (0 turns it off).
+ * customer emails. Every 30 seconds by default outside production; ASSISTANT_POLL_SECONDS changes it (0 turns it off).
  * Serverless deployments call `/api/assistant/poll` from a scheduler instead. Polls never overlap or store twice.
  */
 export function startAssistantScheduler() {
   if (process.env.NEXT_PHASE === "phase-production-build") return;
   const configured = process.env.ASSISTANT_POLL_SECONDS;
-  const seconds = configured === undefined || configured === "" ? (process.env.NODE_ENV === "production" ? 0 : 60) : Number(configured);
+  const seconds = configured === undefined || configured === "" ? (process.env.NODE_ENV === "production" ? 0 : 30) : Number(configured);
   if (!Number.isFinite(seconds) || seconds <= 0) return;
   const holder = globalThis as AssistantHolder;
   if (holder[assistantTimer]) clearInterval(holder[assistantTimer]);
