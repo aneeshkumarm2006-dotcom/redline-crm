@@ -2,6 +2,7 @@
 export const authCopy = {
   title: "Staff sign in", subtitle: "Sign in with your dealership account.",
   email: "Email address", password: "Password", signIn: "Sign in", signingIn: "Signing in…",
+  showPassword: "Show password", hidePassword: "Hide password",
   privateAccess: "Staff access only. Contact your owner if you need an account.",
   invalidCredentials: "Email or password is incorrect.",
   unavailable: "Sign in is temporarily unavailable. Please try again.",
